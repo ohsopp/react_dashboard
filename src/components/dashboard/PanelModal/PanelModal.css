@@ -1,0 +1,119 @@
+/* PanelModal 스타일 */
+.panel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel-modal {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  width: calc(100vw - 120px);
+  max-width: calc(100vw - 120px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.panel-modal-header-wrapper {
+  background: #161b22;
+  padding: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+
+.panel-modal-header-wrapper .panel-header {
+  flex: 1;
+}
+
+.panel-modal-close {
+  background: transparent;
+  border: 1px solid #30363d;
+  font-size: 20px;
+  color: #8b949e;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  line-height: 1;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  transform: rotate(0deg);
+}
+
+.panel-modal-close:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+.panel-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  background: #161b22;
+  color: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.panel-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-modal-content::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.panel-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+

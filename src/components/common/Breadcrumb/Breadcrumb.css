@@ -1,0 +1,22 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #8b949e;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumb-separator {
+  margin: 0 8px;
+  color: #6e7681;
+}
+
+.breadcrumb-current {
+  color: #c9d1d9;
+  font-weight: 500;
+}
+

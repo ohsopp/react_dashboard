@@ -1,0 +1,151 @@
+/* Panel 스타일 */
+.panel {
+  background: #0d1117;
+  border: 1px solid #21262d;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  padding: 0;
+  margin-bottom: 0; /* 그리드 gap으로 간격 처리 */
+  overflow: hidden;
+  position: relative;
+  height: 100%; /* 그리드 셀을 꽉 채우도록 */
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel:hover {
+  border-color: #30363d;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+}
+
+.panel:hover .panel-hide-button {
+  display: flex;
+}
+
+.panel:active {
+  cursor: grabbing;
+}
+
+.panel.resizing {
+  border-color: #646cff;
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  transition: none; /* 리사이징 중에는 transition 비활성화 */
+}
+
+.panel.dragging {
+  opacity: 0.5;
+  cursor: grabbing !important;
+  z-index: 1000;
+}
+
+.panel.drag-over {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
+}
+
+.panel-content {
+  padding: 20px;
+  flex: 1; /* 남은 공간을 채우도록 */
+  overflow-y: auto; /* 내용이 많을 경우 스크롤 */
+  background: #161b22;
+  color: #ffffff;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.panel-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+/* 리사이즈 핸들 */
+.panel-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 25px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel.resizing .panel-resize-handle {
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(100, 108, 255, 0.25) 100%);
+}
+
+.panel.resizing .panel-resize-handle::before {
+  opacity: 1;
+  transform: translateY(-50%) scaleX(1.5);
+}
+
+.panel.resizing .panel-resize-handle::after {
+  opacity: 1;
+  background: rgba(100, 108, 255, 0.4);
+}
+
+.panel-resize-handle:hover {
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(100, 108, 255, 0.15) 100%);
+}
+
+.panel-resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60px;
+  background: linear-gradient(180deg, 
+    transparent 0%, 
+    rgba(100, 108, 255, 0.4) 20%,
+    rgba(100, 108, 255, 0.6) 50%,
+    rgba(100, 108, 255, 0.4) 80%,
+    transparent 100%);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 0 8px rgba(100, 108, 255, 0.3);
+}
+
+.panel-resize-handle:hover::before {
+  opacity: 1;
+  transform: translateY(-50%) scaleX(1.2);
+}
+
+.panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(100, 108, 255, 0.2);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.panel-resize-handle:hover::after {
+  opacity: 1;
+}
+

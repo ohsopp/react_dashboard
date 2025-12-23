@@ -1,0 +1,9 @@
+/* TopBar 스타일 */
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  background: #0d1117;
+  border-bottom: 1px solid #21262d;
+}
+

@@ -1,0 +1,64 @@
+.data-range-selector {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 24px;
+  background: #0d1117;
+  border-bottom: 1px solid #21262d;
+  justify-content: space-between;
+}
+
+.data-range-label {
+  color: #8b949e;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.data-range-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.data-range-button {
+  padding: 6px 16px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.data-range-button:hover {
+  background: #30363d;
+  border-color: #58a6ff;
+}
+
+.data-range-button.active {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
+}
+
+.data-range-edit-button {
+  margin-left: auto;
+  padding: 6px 16px;
+  background: #21262d;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.data-range-edit-button:hover {
+  background: #30363d;
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+

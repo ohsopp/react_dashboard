@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
+import Chart from './components/dashboard/Chart/Chart'
 
 function App() {
   const [selectedRange, setSelectedRange] = useState('1h')
   const [temperature, setTemperature] = useState(null)
+  const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
+  const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
   const eventSourceRef = useRef(null)
   
   const getSubtitle = () => {
@@ -18,25 +21,50 @@ function App() {
     return rangeMap[selectedRange] || 'Last 1 hour'
   }
 
-  const panelConfigs = useMemo(() => [
-    { 
-      id: 'panel1', 
-      title: 'Temperature History', 
-      content: (
-        <div className="stat-panel">
-          <div className="stat-label">현재 온도</div>
-          <div className="stat-value">
-            {temperature !== null ? `${temperature.toFixed(1)}°C` : '--'}
+  const panelConfigs = useMemo(() => {
+    // Chart 데이터 포맷 변환
+    const chartData = {
+      labels: temperatureHistory.timestamps.map(ts => {
+        const date = new Date(ts)
+        return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      }),
+      datasets: [{
+        label: 'Temperature',
+        data: temperatureHistory.values,
+        borderColor: '#58a6ff',
+        backgroundColor: 'rgba(88, 166, 255, 0.1)'
+      }]
+    }
+
+    return [
+      { 
+        id: 'panel1', 
+        title: 'Temperature History', 
+        content: temperatureHistory.timestamps.length > 0 ? (
+          <Chart 
+            type="line" 
+            data={chartData}
+            dataZoomStart={dataZoomRange.start}
+            dataZoomEnd={dataZoomRange.end}
+            onDataZoomChange={(start, end) => setDataZoomRange({ start, end })}
+            options={{
+              animation: false,
+              sampling: 'lttb'
+            }}
+          />
+        ) : (
+          <div className="chart-placeholder">
+            데이터를 불러오는 중...
           </div>
-        </div>
-      )
-    },
-    { id: 'panel2', title: 'Vibration Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
-    { id: 'panel3', title: 'Crest Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
-    { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
-    { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-    { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
-  ], [temperature])
+        )
+      },
+      { id: 'panel2', title: 'Vibration Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
+      { id: 'panel3', title: 'Crest Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
+      { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
+      { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
+      { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
+    ]
+  }, [temperature, temperatureHistory])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
@@ -73,6 +101,35 @@ function App() {
     setPanelOrder(panelConfigs.map((_, index) => index))
   }, [panelConfigs])
   
+  // InfluxDB에서 온도 히스토리 데이터 가져오기
+  const fetchTemperatureHistory = async () => {
+    try {
+      const response = await fetch('http://localhost:5005/api/influxdb/temperature')
+      if (response.ok) {
+        const data = await response.json()
+        setTemperatureHistory({
+          timestamps: data.timestamps || [],
+          values: data.values || []
+        })
+      }
+    } catch (error) {
+      console.error('온도 히스토리 데이터 가져오기 실패:', error)
+    }
+  }
+
+  // 초기 데이터 로드 및 주기적 업데이트
+  useEffect(() => {
+    // 초기 로드
+    fetchTemperatureHistory()
+    
+    // 5초마다 데이터 업데이트 (실시간)
+    const interval = setInterval(() => {
+      fetchTemperatureHistory()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
   useEffect(() => {
     console.log('🔄 SSE 연결 시도: /api/mqtt/temperature')
@@ -95,6 +152,8 @@ function App() {
         if (data.temperature !== undefined) {
           console.log('📨 Temperature received:', data.temperature)
           setTemperature(data.temperature)
+          // 새로운 온도가 들어오면 히스토리도 업데이트
+          fetchTemperatureHistory()
         }
       } catch (error) {
         console.error('❌ Error parsing SSE message:', error)
@@ -300,7 +359,7 @@ function App() {
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           dragClass: 'sortable-drag',
-          filter: '.panel-resize-handle, button, .panel-modal-close',
+          filter: '.panel-resize-handle, button, .panel-modal-close, .chart-container',
           preventOnFilter: false,
           disabled: isModalOpen, // 모달이 열려있으면 드래그 비활성화
           

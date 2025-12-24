@@ -5,6 +5,7 @@ import json
 import threading
 import queue
 import time
+from datetime import datetime, timedelta
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
@@ -183,6 +184,61 @@ def stream_temperature():
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['X-Accel-Buffering'] = 'no'
     return response
+
+@app.route('/api/influxdb/temperature', methods=['GET'])
+def get_temperature_history():
+    """InfluxDB에서 1시간 온도 데이터 조회"""
+    try:
+        if influx_client is None:
+            return jsonify({'error': 'InfluxDB not connected'}), 500
+        
+        # 쿼리 API 생성
+        query_api = influx_client.query_api()
+        
+        # 1시간 전부터 현재까지의 데이터 조회
+        start_time = datetime.utcnow() - timedelta(hours=1)
+        start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        # Flux 쿼리 작성
+        query = f'''
+        from(bucket: "{INFLUXDB_BUCKET}")
+          |> range(start: {start_time_str})
+          |> filter(fn: (r) => r["_measurement"] == "temperature")
+          |> filter(fn: (r) => r["_field"] == "value")
+          |> aggregateWindow(every: 10s, fn: mean, createEmpty: false)
+          |> yield(name: "mean")
+        '''
+        
+        # 쿼리 실행
+        result = query_api.query(org=INFLUXDB_ORG, query=query)
+        
+        # 데이터 파싱
+        timestamps = []
+        values = []
+        
+        for table in result:
+            for record in table.records:
+                timestamps.append(record.get_time().timestamp() * 1000)  # JavaScript timestamp (ms)
+                values.append(record.get_value())
+        
+        # 시간순 정렬
+        if timestamps and values:
+            sorted_data = sorted(zip(timestamps, values))
+            timestamps, values = zip(*sorted_data)
+            timestamps = list(timestamps)
+            values = list(values)
+        
+        return jsonify({
+            'timestamps': timestamps,
+            'values': values,
+            'count': len(values)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error querying InfluxDB: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5005)

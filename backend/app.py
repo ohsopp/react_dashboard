@@ -5,6 +5,8 @@ import json
 import threading
 import queue
 import time
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 app = Flask(__name__)
 CORS(app)
@@ -14,8 +16,24 @@ MQTT_BROKER = '192.168.1.86'
 MQTT_PORT = 1883
 MQTT_TOPIC = 'temp001'
 
+# InfluxDB 설정
+INFLUXDB_URL = 'http://localhost:8089'
+INFLUXDB_TOKEN = 'my-super-secret-auth-token'
+INFLUXDB_ORG = 'my-org'
+INFLUXDB_BUCKET = 'temperature_data'
+
 # MQTT 메시지를 저장할 큐
 mqtt_queue = queue.Queue()
+
+# InfluxDB 클라이언트 초기화
+try:
+    influx_client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
+    write_api = influx_client.write_api(write_options=SYNCHRONOUS)
+    print(f"✅ InfluxDB connected: {INFLUXDB_URL}")
+except Exception as e:
+    print(f"❌ InfluxDB connection error: {e}")
+    influx_client = None
+    write_api = None
 
 def parse_hex_to_temperature(hex_data):
     """16진수 데이터를 온도로 변환 (예: '0110' -> 27.2°C)"""
@@ -57,7 +75,22 @@ def on_message(client, userdata, msg):
                     temperature = parse_hex_to_temperature(hex_data)
                     if temperature is not None:
                         print(f"🌡️ Temperature extracted: {temperature}°C")
+                        
+                        # SSE로 전송할 데이터 큐에 추가
                         mqtt_queue.put({'temperature': temperature, 'timestamp': time.time()})
+                        
+                        # InfluxDB에 저장
+                        if write_api:
+                            try:
+                                point = Point("temperature") \
+                                    .field("value", float(temperature)) \
+                                    .time(time.time_ns())
+                                write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+                                print(f"💾 Saved to InfluxDB: {temperature}°C")
+                            except Exception as e:
+                                print(f"❌ InfluxDB write error: {e}")
+                                import traceback
+                                traceback.print_exc()
                     else:
                         print("⚠️ Failed to parse hex data to temperature")
                 else:

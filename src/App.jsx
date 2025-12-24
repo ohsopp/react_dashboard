@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 
 function App() {
   const [selectedRange, setSelectedRange] = useState('1h')
+  const [temperature, setTemperature] = useState(null)
+  const eventSourceRef = useRef(null)
   
   const getSubtitle = () => {
     const rangeMap = {
@@ -16,14 +18,25 @@ function App() {
     return rangeMap[selectedRange] || 'Last 1 hour'
   }
 
-  const panelConfigs = [
-    { id: 'panel1', title: 'Temperature History', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
+  const panelConfigs = useMemo(() => [
+    { 
+      id: 'panel1', 
+      title: 'Temperature History', 
+      content: (
+        <div className="stat-panel">
+          <div className="stat-label">현재 온도</div>
+          <div className="stat-value">
+            {temperature !== null ? `${temperature.toFixed(1)}°C` : '--'}
+          </div>
+        </div>
+      )
+    },
     { id: 'panel2', title: 'Vibration Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
     { id: 'panel3', title: 'Crest Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
     { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
     { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
     { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
-  ]
+  ], [temperature])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
@@ -38,7 +51,13 @@ function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const sortableInstance = useRef(null)
   const containerRef = useRef(null)
-  const panelOrderRef = useRef(panelConfigs.map((_, index) => index))
+  
+  const [panelOrder, setPanelOrder] = useState(() => {
+    // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
+    return [0, 1, 2, 3, 4, 5]
+  })
+  
+  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
@@ -47,8 +66,56 @@ function App() {
     panel5: 4,
     panel6: 4,
   })
+  
+  // panelConfigs가 변경되면 panelOrderRef 업데이트
+  useEffect(() => {
+    panelOrderRef.current = panelConfigs.map((_, index) => index)
+    setPanelOrder(panelConfigs.map((_, index) => index))
+  }, [panelConfigs])
+  
+  // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
+  useEffect(() => {
+    console.log('🔄 SSE 연결 시도: /api/mqtt/temperature')
+    
+    const eventSource = new EventSource('/api/mqtt/temperature')
+    
+    eventSource.onopen = () => {
+      console.log('✅ SSE Connection opened')
+    }
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        
+        // 하트비트는 무시
+        if (data.heartbeat) {
+          return
+        }
+        
+        if (data.temperature !== undefined) {
+          console.log('📨 Temperature received:', data.temperature)
+          setTemperature(data.temperature)
+        }
+      } catch (error) {
+        console.error('❌ Error parsing SSE message:', error)
+      }
+    }
+    
+    eventSource.onerror = (error) => {
+      console.error('❌ SSE Error:', error)
+      console.log('💡 백엔드 서버가 실행 중인지 확인하세요 (포트 5005)')
+    }
+    
+    eventSourceRef.current = eventSource
 
-  const [panelOrder, setPanelOrder] = useState(panelConfigs.map((_, index) => index))
+    return () => {
+      if (eventSourceRef.current) {
+        console.log('🧹 Closing SSE connection')
+        eventSourceRef.current.close()
+      }
+    }
+  }, [])
+  
   const [hiddenPanels, setHiddenPanels] = useState(() => {
     // localStorage에서 숨겨진 패널 로드
     try {

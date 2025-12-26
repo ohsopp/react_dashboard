@@ -1,3 +1,13 @@
+/* 폰트 설정 - 깔끔하고 세련된 폰트 적용 */
+.csv-modal-overlay,
+.csv-modal-overlay * {
+  /* 한글: 시스템 기본 폰트 (macOS: Apple SD Gothic Neo, Windows: 맑은 고딕) */
+  /* 영어/숫자: Inter 또는 SF Pro/Segoe UI */
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 .csv-modal-overlay {
   position: fixed;
   top: 0;
@@ -26,6 +36,7 @@
 }
 
 .csv-modal-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -39,27 +50,55 @@
   font-size: 18px;
   font-weight: 600;
   color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .csv-modal-close {
-  background: transparent;
-  border: none;
-  color: #8b949e;
-  font-size: 28px;
-  cursor: pointer;
+  position: absolute;
+  top: 15px;
+  right: 15px;
   width: 32px;
   height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid #30363d;
+  color: #8b949e;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
   transition: all 0.2s ease;
   line-height: 1;
+  transform: rotate(0deg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+  text-align: center;
+}
+
+.csv-modal-close > * {
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+
+.csv-modal-close > * {
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .csv-modal-close:hover {
-  background: #21262d;
-  color: #f85149;
+  background: #dc3545;
+  border-color: #dc3545;
+  color: #ffffff;
   transform: rotate(90deg);
 }
 
@@ -73,6 +112,8 @@
   margin: 0 0 24px 0;
   color: #8b949e;
   font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
 }
 
 .csv-quick-select {
@@ -87,6 +128,8 @@
   font-size: 14px;
   font-weight: 500;
   margin-bottom: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .csv-section-label svg {
@@ -110,6 +153,9 @@
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .csv-quick-button:hover {
@@ -144,6 +190,8 @@
   color: #8b949e;
   font-size: 12px;
   font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.005em;
 }
 
 .csv-date-input,
@@ -155,6 +203,34 @@
   color: #c9d1d9;
   font-size: 14px;
   transition: all 0.2s ease;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* 날짜/시간 입력 필드 - 숫자 부분에 SF Pro/Segoe UI 적용 */
+.csv-date-input::-webkit-datetime-edit,
+.csv-time-input::-webkit-datetime-edit {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 날짜/시간 입력 필드 - 구분자(슬래시, 콜론) 부분 */
+.csv-date-input::-webkit-datetime-edit-text,
+.csv-time-input::-webkit-datetime-edit-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* 날짜/시간 입력 필드 - 연도, 월, 일, 시, 분 숫자 부분 */
+.csv-date-input::-webkit-datetime-edit-year-field,
+.csv-date-input::-webkit-datetime-edit-month-field,
+.csv-date-input::-webkit-datetime-edit-day-field,
+.csv-time-input::-webkit-datetime-edit-hour-field,
+.csv-time-input::-webkit-datetime-edit-minute-field {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .csv-date-input:focus,
@@ -183,6 +259,18 @@
   color: #c9d1d9;
   font-size: 13px;
   margin-top: 24px;
+  /* 한글: 시스템 기본, 영어/숫자: Inter */
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* 선택된 범위 내 숫자와 시간 - Inter 또는 SF Pro/Segoe UI */
+.csv-selected-range span {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  /* 숫자 부분에 SF Pro/Segoe UI 적용 */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .csv-selected-range svg {
@@ -208,6 +296,8 @@
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 .csv-button-cancel {

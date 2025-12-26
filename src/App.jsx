@@ -105,11 +105,20 @@ function App() {
     panel6: 4,
   })
   
-  // panelConfigs가 변경되면 panelOrderRef 업데이트
+  // panelConfigs의 길이가 변경되면 panelOrderRef 업데이트 (무한 루프 방지)
+  // panelConfigs는 매번 새로운 참조이므로 길이만 확인
+  const panelConfigsLength = panelConfigs.length
   useEffect(() => {
-    panelOrderRef.current = panelConfigs.map((_, index) => index)
-    setPanelOrder(panelConfigs.map((_, index) => index))
-  }, [panelConfigs])
+    const newOrder = panelConfigs.map((_, index) => index)
+    // 길이가 변경되었을 때만 state 업데이트
+    if (panelOrder.length !== newOrder.length) {
+      panelOrderRef.current = newOrder
+      setPanelOrder(newOrder)
+    } else {
+      // 길이가 같으면 ref만 업데이트 (state 업데이트 없음으로 무한 루프 방지)
+      panelOrderRef.current = newOrder
+    }
+  }, [panelConfigsLength]) // 길이만 의존성으로 사용하여 무한 루프 방지
   
   // selectedRange가 변경될 때마다 ref 업데이트
   useEffect(() => {

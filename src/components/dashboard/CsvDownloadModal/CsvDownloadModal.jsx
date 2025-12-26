@@ -162,18 +162,31 @@ const CsvDownloadModal = ({ isOpen, onClose, panelId }) => {
   if (!isOpen) return null
 
   return (
-    <div className="csv-modal-overlay" onMouseDown={onClose}>
+    <div 
+      className="csv-modal-overlay" 
+      onMouseDown={onClose}
+      onDragStart={(e) => e.preventDefault()}
+      draggable={false}
+    >
       <div 
         className="csv-modal" 
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+        }}
+        onDragStart={(e) => e.preventDefault()}
+        draggable={false}
+        style={{ transform: 'none', scale: 1 }}
       >
+        <div>
         <div className="csv-modal-header">
           <h2 className="csv-modal-title">CSV 다운로드 기간 선택</h2>
           <button className="csv-modal-close" onClick={onClose}>×</button>
         </div>
+        <p className="csv-modal-instruction">다운로드할 데이터의 기간을 선택하세요</p>
+        </div>
         
         <div className="csv-modal-content">
-          <p className="csv-modal-instruction">다운로드할 데이터의 기간을 선택하세요</p>
           
           {/* 빠른 선택 */}
           <div className="csv-quick-select">
@@ -306,7 +319,10 @@ const CsvDownloadModal = ({ isOpen, onClose, panelId }) => {
               <path d="M5 2V14" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M2 5H14" stroke="currentColor" strokeWidth="1.5"/>
             </svg>
-            <span>선택된 범위: {getSelectedRangeText()}</span>
+            <div className="csv-selected-range-text-wrapper">
+             <div>선택된 범위:</div>
+             <div style={{ fontSize: '13px' }}>{getSelectedRangeText()}</div>
+            </div>
           </div>
         </div>
 

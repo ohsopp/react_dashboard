@@ -20,6 +20,15 @@
   justify-content: center;
   z-index: 10000;
   backdrop-filter: blur(4px);
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  cursor: default;
 }
 
 .csv-modal {
@@ -33,6 +42,75 @@
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  cursor: default;
+  transform: none !important;
+  scale: 1 !important;
+  transition: none !important;
+  will-change: auto !important;
+  -webkit-transform: none !important;
+  -moz-transform: none !important;
+  -ms-transform: none !important;
+  -o-transform: none !important;
+}
+
+.csv-modal:active,
+.csv-modal:focus,
+.csv-modal:focus-within,
+.csv-modal:hover {
+  transform: none !important;
+  scale: 1 !important;
+  -webkit-transform: none !important;
+  -moz-transform: none !important;
+  -ms-transform: none !important;
+  -o-transform: none !important;
+}
+
+.csv-modal * {
+  transform: none !important;
+  scale: 1 !important;
+  -webkit-transform: none !important;
+  -moz-transform: none !important;
+  -ms-transform: none !important;
+  -o-transform: none !important;
+}
+
+.csv-modal *:active,
+.csv-modal *:focus,
+.csv-modal *:focus-within {
+  transform: none !important;
+  scale: 1 !important;
+  -webkit-transform: none !important;
+  -moz-transform: none !important;
+  -ms-transform: none !important;
+  -o-transform: none !important;
+}
+
+/* 닫기 버튼은 회전 허용 */
+.csv-modal-close,
+.csv-modal-close:hover,
+.csv-modal-close:active,
+.csv-modal-close:focus {
+  transform: rotate(0deg) !important;
+  -webkit-transform: rotate(0deg) !important;
+  -moz-transform: rotate(0deg) !important;
+  -ms-transform: rotate(0deg) !important;
+  -o-transform: rotate(0deg) !important;
+}
+
+.csv-modal-close:hover {
+  transform: rotate(90deg) !important;
+  -webkit-transform: rotate(90deg) !important;
+  -moz-transform: rotate(90deg) !important;
+  -ms-transform: rotate(90deg) !important;
+  -o-transform: rotate(90deg) !important;
 }
 
 .csv-modal-header {
@@ -40,9 +118,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 20px 24px 6px 24px;
+  background: #161b22;
+}
+
+.csv-modal-instruction {
+  margin: 0;
+  padding: 0px 24px 10px 24px;
+  color: #8b949e;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  line-height: 1.5;
   border-bottom: 1px solid #21262d;
   background: #161b22;
+  text-align: left;
 }
 
 .csv-modal-title {
@@ -103,21 +192,17 @@
 }
 
 .csv-modal-content {
-  padding: 24px;
+  padding: 25px 50px 30px 50px;
   overflow-y: auto;
   flex: 1;
-}
-
-.csv-modal-instruction {
-  margin: 0 0 24px 0;
-  color: #8b949e;
-  font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.5;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .csv-quick-select {
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .csv-section-label {
@@ -171,7 +256,7 @@
 }
 
 .csv-time-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .csv-time-inputs {
@@ -184,6 +269,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: flex-start;
 }
 
 .csv-input-group label {
@@ -192,6 +278,7 @@
   font-weight: 500;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.005em;
+  text-align: left;
 }
 
 .csv-date-input,
@@ -205,6 +292,8 @@
   transition: all 0.2s ease;
   font-weight: 400;
   letter-spacing: 0.01em;
+  width: 100%;
+  text-align: left;
 }
 
 /* 날짜/시간 입력 필드 - 숫자 부분에 SF Pro/Segoe UI 적용 */
@@ -244,7 +333,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 16px 0;
+  margin: 16px 0px 0px 0px;
   color: #30363d;
 }
 
@@ -258,7 +347,7 @@
   border-radius: 6px;
   color: #c9d1d9;
   font-size: 13px;
-  margin-top: 24px;
+  margin-top: 20px;
   /* 한글: 시스템 기본, 영어/숫자: Inter */
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
@@ -325,5 +414,13 @@
 .csv-button-download:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.csv-selected-range-text-wrapper {
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 

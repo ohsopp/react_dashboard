@@ -3,7 +3,125 @@ import ReactECharts from 'echarts-for-react';
 import './Chart.css';
 
 // Chart 컴포넌트
-const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange }) => {
+const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange, value }) => {
+  // 게이지 차트인 경우 별도 처리
+  if (type === 'gauge') {
+    const gaugeValue = value !== undefined && value !== null ? value : 0;
+    
+    const gaugeOptions = {
+      backgroundColor: 'transparent',
+      series: [
+        {
+          name: 'Temperature',
+          type: 'gauge',
+          radius: '65%',
+          startAngle: 200,
+          endAngle: -20,
+          min: 0,
+          max: 50,
+          splitNumber: 10,
+          axisLine: {
+            lineStyle: {
+              width: 15,
+              color: [
+                [0.3, '#58a6ff'],  // 0-15도: 파란색
+                [0.6, '#58a6ff'],  // 15-30도: 파란색
+                [0.8, '#ffa500'],  // 30-40도: 주황색
+                [1, '#ff4444']     // 40-50도: 빨간색
+              ]
+            }
+          },
+          pointer: {
+            itemStyle: {
+              color: '#c9d1d9',
+              shadowColor: 'rgba(0, 0, 0, 0.5)',
+              shadowBlur: 10,
+              shadowOffsetX: 2,
+              shadowOffsetY: 2
+            },
+            width: 6,
+            length: '60%'
+          },
+          axisTick: {
+            distance: -25,
+            length: 6,
+            lineStyle: {
+              color: '#c9d1d9',
+              width: 2
+            }
+          },
+          splitLine: {
+            distance: -30,
+            length: 12,
+            lineStyle: {
+              color: '#c9d1d9',
+              width: 2
+            }
+          },
+          axisLabel: {
+            color: '#c9d1d9',
+            fontSize: 11,
+            distance: -18,
+            formatter: function(value) {
+              if (value === 0 || value === 50) {
+                return value + '°C';
+              }
+              return value;
+            }
+          },
+          detail: {
+            valueAnimation: true,
+            width: '50%',
+            lineHeight: 18,
+            borderRadius: 6,
+            offsetCenter: [0, '15%'],
+            fontSize: 24,
+            fontWeight: 'bold',
+            formatter: function(value) {
+              return value.toFixed(1) + '°C';
+            },
+            color: '#c9d1d9',
+            backgroundColor: 'rgba(13, 17, 23, 0.8)',
+            borderColor: '#30363d',
+            borderWidth: 2,
+            padding: [8, 16]
+          },
+          data: [
+            {
+              value: gaugeValue,
+              name: 'Temperature'
+            }
+          ],
+          animationDuration: 1000,
+          animationEasing: 'cubicOut'
+        }
+      ],
+      tooltip: {
+        formatter: '{a} <br/>{b} : {c}°C',
+        backgroundColor: 'rgba(13, 17, 23, 0.9)',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 12
+        }
+      },
+      ...options
+    };
+
+    return (
+      <div className={`chart chart-${type} ${className}`}>
+        <ReactECharts
+          option={gaugeOptions}
+          style={{ width: '100%', height: '100%', minHeight: '300px' }}
+          opts={{ renderer: 'svg' }}
+          notMerge={true}
+          lazyUpdate={true}
+        />
+      </div>
+    );
+  }
+
   // 파이 차트의 경우 다른 데이터 구조 사용
   if (type === 'pie') {
     if (!data || !data.series || !data.series.data || data.series.data.length === 0) {

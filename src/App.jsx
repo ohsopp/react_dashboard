@@ -93,7 +93,17 @@ function App() {
           />
         )
       },
-      { id: 'panel3', title: 'Crest Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
+      { 
+        id: 'panel3', 
+        title: 'Temperature Gauge', 
+        content: (
+          <Chart 
+            type="gauge" 
+            value={temperature}
+            options={{}}
+          />
+        )
+      },
       { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
       { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
       { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },

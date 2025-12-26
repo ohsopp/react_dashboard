@@ -2,10 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import './Panel.css'
 import PanelModal from '../PanelModal/PanelModal'
 import PanelHeader from '../PanelHeader/PanelHeader'
+import CsvDownloadModal from '../CsvDownloadModal/CsvDownloadModal'
 
 // Panel 컴포넌트
 const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChange, id, index, isDragging, onModalOpen, onModalClose, onHide }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 })
   const [isResizing, setIsResizing] = useState(false)
   const justFinishedResizing = useRef(false)
@@ -178,6 +180,7 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
             title={title}
             subtitle={subtitle}
             onHide={onHide}
+            onCsvClick={() => setIsCsvModalOpen(true)}
           />
         )}
         <div className="panel-content">
@@ -199,6 +202,12 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
       >
         {children}
       </PanelModal>
+      
+      <CsvDownloadModal
+        isOpen={isCsvModalOpen}
+        onClose={() => setIsCsvModalOpen(false)}
+        panelId={id}
+      />
     </>
   );
 };

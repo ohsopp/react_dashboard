@@ -1,0 +1,239 @@
+.csv-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.csv-modal {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.csv-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #21262d;
+  background: #161b22;
+}
+
+.csv-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #c9d1d9;
+}
+
+.csv-modal-close {
+  background: transparent;
+  border: none;
+  color: #8b949e;
+  font-size: 28px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.csv-modal-close:hover {
+  background: #21262d;
+  color: #f85149;
+  transform: rotate(90deg);
+}
+
+.csv-modal-content {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.csv-modal-instruction {
+  margin: 0 0 24px 0;
+  color: #8b949e;
+  font-size: 14px;
+}
+
+.csv-quick-select {
+  margin-bottom: 32px;
+}
+
+.csv-section-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c9d1d9;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.csv-section-label svg {
+  color: #8b949e;
+  flex-shrink: 0;
+}
+
+.csv-quick-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.csv-quick-button {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 10px 16px;
+  color: #c9d1d9;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.csv-quick-button:hover {
+  background: #21262d;
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.csv-quick-button.active {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
+}
+
+.csv-time-section {
+  margin-bottom: 24px;
+}
+
+.csv-time-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.csv-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.csv-input-group label {
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.csv-date-input,
+.csv-time-input {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #c9d1d9;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.csv-date-input:focus,
+.csv-time-input:focus {
+  outline: none;
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.csv-separator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+  color: #30363d;
+}
+
+.csv-selected-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #c9d1d9;
+  font-size: 13px;
+  margin-top: 24px;
+}
+
+.csv-selected-range svg {
+  color: #58a6ff;
+  flex-shrink: 0;
+}
+
+.csv-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #21262d;
+  background: #161b22;
+}
+
+.csv-button {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.csv-button-cancel {
+  background: #21262d;
+  border-color: #30363d;
+  color: #c9d1d9;
+}
+
+.csv-button-cancel:hover {
+  background: #30363d;
+  border-color: #484f58;
+}
+
+.csv-button-download {
+  background: #1f6feb;
+  border-color: #1f6feb;
+  color: #ffffff;
+}
+
+.csv-button-download:hover:not(:disabled) {
+  background: #2c7edb;
+  border-color: #2c7edb;
+}
+
+.csv-button-download:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

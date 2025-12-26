@@ -1,13 +1,19 @@
-from flask import Flask, jsonify, Response, stream_with_context, request
+from flask import Flask, jsonify, Response, stream_with_context, request, make_response
 from flask_cors import CORS
 import paho.mqtt.client as mqtt
 import json
 import threading
 import queue
 import time
-from datetime import datetime, timedelta
+import csv
+import io
+from datetime import datetime, timedelta, timezone
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
+try:
+    from dateutil import parser
+except ImportError:
+    parser = None
 
 app = Flask(__name__)
 CORS(app)
@@ -30,11 +36,13 @@ mqtt_queue = queue.Queue()
 try:
     influx_client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
     write_api = influx_client.write_api(write_options=SYNCHRONOUS)
+    query_api = influx_client.query_api()
     print(f"✅ InfluxDB connected: {INFLUXDB_URL}")
 except Exception as e:
     print(f"❌ InfluxDB connection error: {e}")
     influx_client = None
     write_api = None
+    query_api = None
 
 def parse_hex_to_temperature(hex_data):
     """16진수 데이터를 온도로 변환 (예: '0110' -> 27.2°C)"""
@@ -259,6 +267,133 @@ def get_temperature_history():
         
     except Exception as e:
         print(f"❌ Error querying InfluxDB: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/export/temperature/csv', methods=['GET'])
+def export_temperature_csv():
+    """온도 데이터를 CSV 파일로 내보내기 (KST 시간 범위 지정)"""
+    if not query_api:
+        return jsonify({'error': 'InfluxDB 쿼리 API가 초기화되지 않았습니다.'}), 500
+    
+    try:
+        # 1. KST 시간 파라미터 받기
+        start_time_kst_str = request.args.get('start_time_kst')  # "YYYY-MM-DD HH:MM:SS"
+        end_time_kst_str = request.args.get('end_time_kst')
+        
+        if not start_time_kst_str or not end_time_kst_str:
+            return jsonify({'error': '시작 시간과 종료 시간이 필요합니다.'}), 400
+        
+        print(f"📥 CSV 다운로드 요청: start_time_kst={start_time_kst_str}, end_time_kst={end_time_kst_str}")
+        
+        # 2. KST 문자열 파싱
+        try:
+            start_kst = datetime.strptime(start_time_kst_str, '%Y-%m-%d %H:%M:%S')
+            end_kst = datetime.strptime(end_time_kst_str, '%Y-%m-%d %H:%M:%S')
+        except ValueError as e:
+            return jsonify({'error': f'시간 형식이 올바르지 않습니다. 형식: YYYY-MM-DD HH:MM:SS. 오류: {e}'}), 400
+        
+        # 3. KST → UTC 변환 (KST = UTC + 9시간)
+        start_utc = start_kst - timedelta(hours=9)
+        end_utc = end_kst - timedelta(hours=9)
+        
+        print(f"📅 변환된 UTC 시간: start={start_utc}, end={end_utc}")
+        
+        # 4. RFC3339 형식으로 변환 (InfluxDB 쿼리용)
+        start_rfc = start_utc.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        end_rfc = end_utc.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+        
+        print(f"🔍 InfluxDB 쿼리 범위: start={start_rfc}, end={end_rfc}")
+        
+        # 5. InfluxDB Flux 쿼리 실행
+        query = f'''
+        from(bucket: "{INFLUXDB_BUCKET}")
+          |> range(start: {start_rfc}, stop: {end_rfc})
+          |> filter(fn: (r) => r["_measurement"] == "temperature")
+          |> filter(fn: (r) => r["_field"] == "value")
+          |> sort(columns: ["_time"])
+        '''
+        
+        print(f"📊 Flux 쿼리:\n{query}")
+        
+        result = query_api.query(org=INFLUXDB_ORG, query=query)
+        
+        # 6. CSV 생성
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # UTF-8 BOM 추가 (Excel 호환성)
+        output.write('\ufeff')
+        
+        # 헤더 작성
+        writer.writerow(['Time (UTC)', 'Time (KST)', 'Temperature (°C)'])
+        
+        # 데이터 행 추가
+        row_count = 0
+        for table in result:
+            for record in table.records:
+                time_utc = record.get_time()
+                
+                # timezone-aware인 경우 naive로 변환
+                if time_utc.tzinfo is not None:
+                    time_utc_naive = time_utc.replace(tzinfo=None)
+                else:
+                    time_utc_naive = time_utc
+                
+                # Python 레벨에서 정확한 범위 체크
+                if time_utc_naive < start_utc or time_utc_naive >= end_utc:
+                    continue
+                
+                # UTC → KST 변환 (UTC+9)
+                time_kst = time_utc_naive + timedelta(hours=9)
+                value = record.get_value()
+                
+                # 데이터가 없으면 "--"로 표시
+                if value is None:
+                    writer.writerow([
+                        time_utc_naive.strftime('%Y-%m-%d %H:%M:%S'),
+                        time_kst.strftime('%Y-%m-%d %H:%M:%S'),
+                        '--'
+                    ])
+                else:
+                    writer.writerow([
+                        time_utc_naive.strftime('%Y-%m-%d %H:%M:%S'),
+                        time_kst.strftime('%Y-%m-%d %H:%M:%S'),
+                        f'{value:.2f}'
+                    ])
+                row_count += 1
+        
+        print(f"📈 조회된 레코드 수: {row_count}")
+        
+        # 데이터가 없는 경우
+        if row_count == 0:
+            return jsonify({'error': '선택한 시간 범위에 데이터가 없습니다.'}), 404
+        
+        # 파일명 생성
+        filename_start = start_time_kst_str.replace('-', '').replace(':', '').replace(' ', '_')
+        filename_end = end_time_kst_str.replace('-', '').replace(':', '').replace(' ', '_')
+        filename = f'temperature_{filename_start}_{filename_end}.csv'
+        
+        # UTF-8 BOM 포함하여 인코딩
+        csv_content = output.getvalue()
+        # 이미 output.write('\ufeff')로 BOM을 추가했으므로 utf-8로 인코딩
+        csv_bytes = csv_content.encode('utf-8')
+        
+        # HTTP 응답 생성
+        response = make_response(csv_bytes)
+        response.headers['Content-Type'] = 'text/csv; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response.headers['Content-Length'] = len(csv_bytes)
+        
+        print(f"✅ CSV 생성 완료: {row_count}개 행, 파일명: {filename}")
+        
+        return response
+        
+    except ValueError as e:
+        return jsonify({'error': f'시간 형식이 올바르지 않습니다. 형식: YYYY-MM-DD HH:MM:SS. 오류: {e}'}), 400
+    except Exception as e:
+        print(f"❌ CSV 내보내기 실패: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500

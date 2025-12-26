@@ -20,7 +20,8 @@
   cursor: grab;
 }
 
-.panel:hover .panel-hide-button {
+.panel:hover .panel-hide-button,
+.panel:hover .panel-csv-button {
   display: flex;
 }
 

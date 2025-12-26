@@ -55,18 +55,19 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         {
           name: data.series?.name || 'Access From',
           type: 'pie',
-          radius: '55%',
+          radius: '70%',
           center: ['50%', '50%'],
           data: pieData.sort(function (a, b) {
             return a.value - b.value;
           }),
           roseType: 'radius',
           label: {
-            color: 'rgba(255, 255, 255, 0.3)'
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: 12
           },
           labelLine: {
             lineStyle: {
-              color: 'rgba(255, 255, 255, 0.3)'
+              color: 'rgba(255, 255, 255, 0.6)'
             },
             smooth: 0.2,
             length: 10,

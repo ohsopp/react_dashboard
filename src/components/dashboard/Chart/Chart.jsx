@@ -157,7 +157,31 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           magicType: {
             type: ['stack']
           },
-          dataView: {},
+          dataView: {
+            readOnly: false,
+            optionToContent: function(opt) {
+              let axisData = opt.xAxis[0].data;
+              let series = opt.series;
+              let table = '<table style="width:100%; text-align:center; color:#000000;"><tbody><tr style="background-color:#f0f0f0; font-weight:bold;">' +
+                          '<td style="color:#000000;">Index</td>';
+              for (let i = 0; i < series.length; i++) {
+                table += '<td style="color:#000000;">' + series[i].name + '</td>';
+              }
+              table += '</tr>';
+              for (let i = 0, l = axisData.length; i < l; i++) {
+                table += '<tr><td style="color:#000000;">' + axisData[i] + '</td>';
+                for (let j = 0; j < series.length; j++) {
+                  table += '<td style="color:#000000;">' + (series[j].data[i] != null ? series[j].data[i] : '-') + '</td>';
+                }
+                table += '</tr>';
+              }
+              table += '</tbody></table>';
+              return table;
+            },
+            contentToOption: function(opt, container) {
+              // 데이터 수정 기능 유지
+            }
+          },
           saveAsImage: {
             pixelRatio: 2
           }
@@ -261,14 +285,17 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       ...options
     };
 
+    const chartRef = useRef(null);
+
     return (
       <div className={`chart chart-${type} ${className}`}>
         <ReactECharts
+          ref={chartRef}
           option={barOptions}
           style={{ width: '100%', height: '100%', minHeight: '300px' }}
           opts={{ renderer: 'svg' }}
-          notMerge={true}
-          lazyUpdate={true}
+          notMerge={false}
+          lazyUpdate={false}
         />
       </div>
     );

@@ -104,9 +104,19 @@ function App() {
           />
         )
       },
-      { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
-      { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-      { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
+      { 
+        id: 'panel5', 
+        title: 'Bar Animation', 
+        content: (
+          <Chart 
+            type="bar" 
+            options={{}}
+          />
+        )
+      },
+      { id: 'panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
+      { id: 'panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
+      { id: 'panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
       ]
     }, [temperature, temperatureHistory, selectedRange, dataZoomRange])
 
@@ -114,9 +124,11 @@ function App() {
     panel1: 12, // 전체
     panel2: 6,  // 2/4
     panel3: 6,  // 2/4
-    panel4: 4,  // 1/3
-    panel5: 4,  // 1/3
+    panel4: 6,  // 2/4
+    panel5: 6,  // 2/4
     panel6: 4,  // 1/3
+    panel7: 4,  // 1/3
+    panel8: 4   // 1/3
   })
   const [isDragging, setIsDragging] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -126,17 +138,19 @@ function App() {
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4, 5]
+    return [0, 1, 2, 3, 4, 5, 6, 7]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
+  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5, 6, 7])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
     panel3: 6,
-    panel4: 4,
-    panel5: 4,
+    panel4: 6,
+    panel5: 6,
     panel6: 4,
+    panel7: 4,
+    panel8: 4
   })
   
   // panelConfigs의 길이가 변경되면 panelOrderRef 업데이트 (무한 루프 방지)
@@ -568,9 +582,10 @@ function App() {
         id="dashboard-container"
       >
         {panelOrder
-          .filter(orderIndex => !hiddenPanels.includes(panelConfigs[orderIndex].id))
+          .filter(orderIndex => panelConfigs[orderIndex] && !hiddenPanels.includes(panelConfigs[orderIndex].id))
           .map((orderIndex, index) => {
             const config = panelConfigs[orderIndex]
+            if (!config) return null
             return (
               <Panel 
                 key={config.id}

@@ -122,6 +122,158 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     );
   }
 
+  // 막대 그래프인 경우 별도 처리
+  if (type === 'bar') {
+    const xAxisData = [];
+    const data1 = [];
+    const data2 = [];
+    
+    for (let i = 0; i < 100; i++) {
+      xAxisData.push('A' + i);
+      data1.push((Math.sin(i / 5) * (i / 5 - 10) + i / 6) * 5);
+      data2.push((Math.cos(i / 5) * (i / 5 - 10) + i / 6) * 5);
+    }
+
+    const barOptions = {
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Bar Animation Delay',
+        left: 'center',
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 16
+        }
+      },
+      legend: {
+        data: ['bar', 'bar2'],
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 12
+        },
+        top: 30
+      },
+      toolbox: {
+        feature: {
+          magicType: {
+            type: ['stack']
+          },
+          dataView: {},
+          saveAsImage: {
+            pixelRatio: 2
+          }
+        },
+        iconStyle: {
+          borderColor: '#c9d1d9'
+        },
+        emphasis: {
+          iconStyle: {
+            borderColor: '#58a6ff'
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(13, 17, 23, 0.9)',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 12
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+      },
+      xAxis: {
+        data: xAxisData,
+        splitLine: {
+          show: false
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#30363d'
+          }
+        },
+        axisLabel: {
+          color: '#7d8590',
+          fontSize: 10
+        }
+      },
+      yAxis: {
+        axisLine: {
+          lineStyle: {
+            color: '#30363d'
+          }
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(214, 223, 233, 0.1)',
+            type: 'dashed'
+          }
+        },
+        axisLabel: {
+          color: '#7d8590',
+          fontSize: 10
+        }
+      },
+      series: [
+        {
+          name: 'bar',
+          type: 'bar',
+          data: data1,
+          itemStyle: {
+            color: '#58a6ff'
+          },
+          emphasis: {
+            focus: 'series',
+            itemStyle: {
+              color: '#79c0ff'
+            }
+          },
+          animationDelay: function (idx) {
+            return idx * 10;
+          }
+        },
+        {
+          name: 'bar2',
+          type: 'bar',
+          data: data2,
+          itemStyle: {
+            color: '#f85149'
+          },
+          emphasis: {
+            focus: 'series',
+            itemStyle: {
+              color: '#ff6b6b'
+            }
+          },
+          animationDelay: function (idx) {
+            return idx * 10 + 100;
+          }
+        }
+      ],
+      animationEasing: 'elasticOut',
+      animationDelayUpdate: function (idx) {
+        return idx * 5;
+      },
+      ...options
+    };
+
+    return (
+      <div className={`chart chart-${type} ${className}`}>
+        <ReactECharts
+          option={barOptions}
+          style={{ width: '100%', height: '100%', minHeight: '300px' }}
+          opts={{ renderer: 'svg' }}
+          notMerge={true}
+          lazyUpdate={true}
+        />
+      </div>
+    );
+  }
+
   // 파이 차트의 경우 다른 데이터 구조 사용
   if (type === 'pie') {
     if (!data || !data.series || !data.series.data || data.series.data.length === 0) {

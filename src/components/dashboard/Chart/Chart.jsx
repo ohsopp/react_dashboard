@@ -4,17 +4,103 @@ import './Chart.css';
 
 // Chart 컴포넌트
 const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange }) => {
-  if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
+  // 파이 차트의 경우 다른 데이터 구조 사용
+  if (type === 'pie') {
+    if (!data || !data.series || !data.series.data || data.series.data.length === 0) {
+      return (
+        <div className={`chart chart-${type} ${className}`}>
+          <div className="chart-placeholder">
+            데이터가 없습니다.
+          </div>
+        </div>
+      );
+    }
+  } else {
+    if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
+      return (
+        <div className={`chart chart-${type} ${className}`}>
+          <div className="chart-placeholder">
+            데이터가 없습니다.
+          </div>
+        </div>
+      );
+    }
+  }
+
+  // 파이 차트인 경우 별도 처리
+  if (type === 'pie') {
+    const pieData = data.series?.data || [];
+    
+    const pieOptions = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'item',
+        backgroundColor: 'rgba(13, 17, 23, 0.9)',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 12
+        }
+      },
+      visualMap: {
+        show: false,
+        min: 80,
+        max: 600,
+        inRange: {
+          colorLightness: [0, 1]
+        }
+      },
+      series: [
+        {
+          name: data.series?.name || 'Access From',
+          type: 'pie',
+          radius: '55%',
+          center: ['50%', '50%'],
+          data: pieData.sort(function (a, b) {
+            return a.value - b.value;
+          }),
+          roseType: 'radius',
+          label: {
+            color: 'rgba(255, 255, 255, 0.3)'
+          },
+          labelLine: {
+            lineStyle: {
+              color: 'rgba(255, 255, 255, 0.3)'
+            },
+            smooth: 0.2,
+            length: 10,
+            length2: 20
+          },
+          itemStyle: {
+            color: '#c23531',
+            shadowBlur: 200,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          },
+          animationType: 'scale',
+          animationEasing: 'elasticOut',
+          animationDelay: function (idx) {
+            return Math.random() * 200;
+          }
+        }
+      ],
+      ...options
+    };
+
     return (
       <div className={`chart chart-${type} ${className}`}>
-        <div className="chart-placeholder">
-          데이터가 없습니다.
-        </div>
+        <ReactECharts
+          option={pieOptions}
+          style={{ width: '100%', height: '100%', minHeight: '300px' }}
+          opts={{ renderer: 'svg' }}
+          notMerge={true}
+          lazyUpdate={true}
+        />
       </div>
     );
   }
 
-  // ECharts 옵션 생성
+  // ECharts 옵션 생성 (line 차트용)
   const dataset = data.datasets[0];
   
   // timeRange 변경 시 dataZoom 초기화를 위한 ref

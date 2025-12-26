@@ -69,7 +69,30 @@ function App() {
           </div>
         )
       },
-      { id: 'panel2', title: 'Vibration Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
+      { 
+        id: 'panel2', 
+        title: 'Customized Pie', 
+        content: (
+          <Chart 
+            type="pie" 
+            data={{
+              series: {
+                name: 'Access From',
+                data: [
+                  { value: 335, name: 'Direct' },
+                  { value: 310, name: 'Email' },
+                  { value: 274, name: 'Union Ads' },
+                  { value: 235, name: 'Video Ads' },
+                  { value: 400, name: 'Search Engine' }
+                ]
+              }
+            }}
+            options={{
+              backgroundColor: '#0d1117'
+            }}
+          />
+        )
+      },
       { id: 'panel3', title: 'Crest Sensor', content: <div className="panel-placeholder"><p>차트 영역 (나중에 그래프 추가 예정)</p></div> },
       { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
       { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },

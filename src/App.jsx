@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
@@ -10,6 +10,8 @@ function App() {
   const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
   const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
   const eventSourceRef = useRef(null)
+  const abortControllerRef = useRef(null) // AbortController 추적
+  const selectedRangeRef = useRef(selectedRange) // 최신 selectedRange 추적
   
   const getSubtitle = () => {
     const rangeMap = {
@@ -26,11 +28,18 @@ function App() {
     const chartData = {
       labels: temperatureHistory.timestamps.map(ts => {
         const date = new Date(ts)
-        return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        // 선택된 범위에 따라 날짜 포맷 조정
+        if (selectedRange === '7d') {
+          return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
+                 date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        } else {
+          return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        }
       }),
+      timestamps: temperatureHistory.timestamps, // 원본 타임스탬프 유지
       datasets: [{
         label: 'Temperature',
-        data: temperatureHistory.values,
+        data: temperatureHistory.values.map(val => val !== null && val !== undefined ? val : null),
         borderColor: '#58a6ff',
         backgroundColor: 'rgba(88, 166, 255, 0.1)'
       }]
@@ -46,6 +55,7 @@ function App() {
             data={chartData}
             dataZoomStart={dataZoomRange.start}
             dataZoomEnd={dataZoomRange.end}
+            timeRange={selectedRange}
             onDataZoomChange={(start, end) => setDataZoomRange({ start, end })}
             options={{
               animation: false,
@@ -63,8 +73,8 @@ function App() {
       { id: 'panel4', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
       { id: 'panel5', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
       { id: 'panel6', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
-    ]
-  }, [temperature, temperatureHistory])
+      ]
+    }, [temperature, temperatureHistory, selectedRange, dataZoomRange])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
@@ -101,34 +111,80 @@ function App() {
     setPanelOrder(panelConfigs.map((_, index) => index))
   }, [panelConfigs])
   
+  // selectedRange가 변경될 때마다 ref 업데이트
+  useEffect(() => {
+    selectedRangeRef.current = selectedRange
+  }, [selectedRange])
+  
   // InfluxDB에서 온도 히스토리 데이터 가져오기
-  const fetchTemperatureHistory = async () => {
+  const fetchTemperatureHistory = useCallback(async (range) => {
+    // range가 없으면 최신 selectedRange 사용 (ref를 통해)
+    const targetRange = range || selectedRangeRef.current
+    
+    // 이전 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // 새로운 AbortController 생성
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+    
+    // 요청 시점의 selectedRange 저장 (응답 처리 시 비교용)
+    const requestRange = targetRange
+    
     try {
-      const response = await fetch('http://localhost:5005/api/influxdb/temperature')
+      const response = await fetch(`http://localhost:5005/api/influxdb/temperature?range=${requestRange}`, {
+        signal: abortController.signal
+      })
+      
       if (response.ok) {
         const data = await response.json()
-        setTemperatureHistory({
-          timestamps: data.timestamps || [],
-          values: data.values || []
-        })
+        // 요청 시점의 range와 현재 selectedRange가 일치하고 요청이 취소되지 않은 경우에만 데이터 설정
+        // ref를 통해 최신 selectedRange 확인
+        if (requestRange === selectedRangeRef.current && !abortController.signal.aborted) {
+          setTemperatureHistory({
+            timestamps: data.timestamps || [],
+            values: data.values || []
+          })
+        }
       }
     } catch (error) {
-      console.error('온도 히스토리 데이터 가져오기 실패:', error)
+      // AbortError는 정상적인 취소이므로 무시
+      if (error.name !== 'AbortError') {
+        console.error('온도 히스토리 데이터 가져오기 실패:', error)
+      }
     }
-  }
+  }, []) // 의존성 배열을 비워서 함수가 재생성되지 않도록 함
 
-  // 초기 데이터 로드 및 주기적 업데이트
+  // selectedRange가 변경되면 해당 범위의 데이터 로드
   useEffect(() => {
-    // 초기 로드
-    fetchTemperatureHistory()
+    // 이전 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    
+    // dataZoom 초기화
+    setDataZoomRange({ start: 0, end: 100 })
+    
+    // 현재 selectedRange로 데이터 로드
+    fetchTemperatureHistory(selectedRange)
     
     // 5초마다 데이터 업데이트 (실시간)
+    // interval 내부에서 ref를 통해 최신 selectedRange 사용 (클로저 문제 해결)
     const interval = setInterval(() => {
-      fetchTemperatureHistory()
+      // ref를 통해 최신 selectedRange 사용
+      fetchTemperatureHistory(selectedRangeRef.current)
     }, 5000)
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => {
+      clearInterval(interval)
+      // cleanup 시 진행 중인 요청 취소
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+  }, [selectedRange, fetchTemperatureHistory]) // fetchTemperatureHistory도 의존성에 추가
 
   // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
   useEffect(() => {
@@ -152,8 +208,8 @@ function App() {
         if (data.temperature !== undefined) {
           console.log('📨 Temperature received:', data.temperature)
           setTemperature(data.temperature)
-          // 새로운 온도가 들어오면 히스토리도 업데이트
-          fetchTemperatureHistory()
+          // 새로운 온도가 들어오면 최신 selectedRange로 히스토리 업데이트 (ref 사용)
+          fetchTemperatureHistory(selectedRangeRef.current)
         }
       } catch (error) {
         console.error('❌ Error parsing SSE message:', error)

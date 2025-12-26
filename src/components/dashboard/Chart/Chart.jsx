@@ -3,7 +3,7 @@ import ReactECharts from 'echarts-for-react';
 import './Chart.css';
 
 // Chart 컴포넌트
-const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange }) => {
+const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange }) => {
   if (!data || !data.labels || !data.datasets || data.datasets.length === 0) {
     return (
       <div className={`chart chart-${type} ${className}`}>
@@ -54,6 +54,9 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         color: '#c9d1d9',
         fontSize: 12
       },
+      confine: true, // tooltip이 차트 영역 내에 제한되도록
+      appendToBody: false, // body에 append하지 않고 차트 내부에 유지
+      renderMode: 'html', // HTML 렌더링 모드 사용
       axisPointer: {
         type: 'line',
         lineStyle: {
@@ -70,10 +73,39 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           fontSize: 12
         }
       },
-      formatter: (params) => {
-        const param = params[0]
-        return `${param.name}<br/>${param.seriesName}: ${param.value.toFixed(1)}°C`
-      }
+      formatter: function(params) {
+        try {
+          if (!params || !Array.isArray(params) || params.length === 0) {
+            return '<div>데이터 없음</div>'
+          }
+          const param = params[0]
+          if (!param || param === null || param === undefined) {
+            return '<div>데이터 없음</div>'
+          }
+          const name = param.name || param.axisValue || ''
+          const seriesName = param.seriesName || 'Temperature'
+          
+          if (param.value === null || param.value === undefined || isNaN(param.value)) {
+            return `<div>${name}<br/>${seriesName}: --</div>`
+          }
+          
+          const value = Number(param.value)
+          if (isNaN(value)) {
+            return `<div>${name}<br/>${seriesName}: --</div>`
+          }
+          
+          return `<div>${name}<br/>${seriesName}: ${value.toFixed(1)}°C</div>`
+        } catch (error) {
+          console.warn('Tooltip formatter error:', error)
+          return '<div>데이터 없음</div>'
+        }
+      },
+      // tooltip이 표시되지 않을 때를 대비한 안전장치
+      showDelay: 0,
+      hideDelay: 0,
+      enterable: false,
+      // tooltip DOM이 준비되지 않았을 때를 대비
+      alwaysShowContent: false
     },
     dataZoom: [
       {
@@ -187,6 +219,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         smooth: true,
         sampling: 'lttb', // 대용량 데이터를 위한 LTTB 샘플링
         symbol: 'none', // 심볼 숨김 (성능 향상)
+        connectNulls: false, // null 값이 있으면 선을 끊어서 빈 공간으로 표시
         lineStyle: {
           color: dataset.borderColor || '#58a6ff',
           width: 1
@@ -261,34 +294,68 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   
   // props가 변경되면 차트에 즉시 반영
   useEffect(() => {
-    if (chartRef.current && chartRef.current.getEchartsInstance) {
-      const echartsInstance = chartRef.current.getEchartsInstance();
-      if (echartsInstance && dataZoomStart !== undefined && dataZoomEnd !== undefined) {
-        // props에서 업데이트 중임을 표시 (이벤트 핸들러에서 무한 루프 방지)
-        isUpdatingFromProps.current = true;
-        
-        // 현재 차트의 dataZoom 범위 확인
-        const option = echartsInstance.getOption();
-        if (option && option.dataZoom && option.dataZoom.length > 0) {
-          const currentStart = option.dataZoom[0].start;
-          const currentEnd = option.dataZoom[0].end;
-          // props와 다를 때만 업데이트 (무한 루프 방지)
-          if (Math.abs(currentStart - dataZoomStart) > 0.1 || Math.abs(currentEnd - dataZoomEnd) > 0.1) {
-            echartsInstance.dispatchAction({
-              type: 'dataZoom',
-              start: dataZoomStart,
-              end: dataZoomEnd,
-              animation: false // 애니메이션 비활성화로 즉시 반영
-            });
+    // 다음 이벤트 루프에서 실행하여 ECharts 경고 방지
+    const timer = setTimeout(() => {
+      if (chartRef.current && chartRef.current.getEchartsInstance) {
+        try {
+          const echartsInstance = chartRef.current.getEchartsInstance();
+          if (!echartsInstance) {
+            return;
           }
+          
+          // isDisposed 체크 (ECharts 인스턴스가 파괴되었는지 확인)
+          if (echartsInstance.isDisposed && echartsInstance.isDisposed()) {
+            return;
+          }
+          
+          if (dataZoomStart !== undefined && dataZoomEnd !== undefined) {
+            // props에서 업데이트 중임을 표시 (이벤트 핸들러에서 무한 루프 방지)
+            isUpdatingFromProps.current = true;
+            
+            try {
+              // 현재 차트의 dataZoom 범위 확인
+              const option = echartsInstance.getOption();
+              if (option && option.dataZoom && option.dataZoom.length > 0) {
+                const currentStart = option.dataZoom[0].start;
+                const currentEnd = option.dataZoom[0].end;
+                // props와 다를 때만 업데이트 (무한 루프 방지)
+                if (Math.abs(currentStart - dataZoomStart) > 0.1 || Math.abs(currentEnd - dataZoomEnd) > 0.1) {
+                  // requestAnimationFrame을 사용하여 더 안전하게 처리
+                  requestAnimationFrame(() => {
+                    try {
+                      if (chartRef.current && chartRef.current.getEchartsInstance) {
+                        const instance = chartRef.current.getEchartsInstance();
+                        if (instance && (!instance.isDisposed || !instance.isDisposed())) {
+                          instance.dispatchAction({
+                            type: 'dataZoom',
+                            start: dataZoomStart,
+                            end: dataZoomEnd,
+                            animation: false
+                          });
+                        }
+                      }
+                    } catch (error) {
+                      console.warn('ECharts dispatchAction error:', error);
+                    }
+                  });
+                }
+              }
+            } catch (error) {
+              console.warn('ECharts option get error:', error);
+            }
+            
+            // 다음 이벤트 루프에서 플래그 해제
+            setTimeout(() => {
+              isUpdatingFromProps.current = false;
+            }, 0);
+          }
+        } catch (error) {
+          console.warn('ECharts instance error:', error);
         }
-        
-        // 다음 이벤트 루프에서 플래그 해제
-        setTimeout(() => {
-          isUpdatingFromProps.current = false;
-        }, 0);
       }
-    }
+    }, 100); // 약간의 지연을 두어 DOM이 완전히 준비된 후 실행
+    
+    return () => clearTimeout(timer);
   }, [dataZoomStart, dataZoomEnd]);
 
   // 슬라이더 영역에서 이벤트 전파 방지
@@ -316,8 +383,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         option={echartsOption}
         style={{ width: '100%', height: '100%', minHeight: '300px' }}
         opts={{ renderer: 'svg' }}
-        notMerge={false}
-        lazyUpdate={false}
+        notMerge={true}
+        lazyUpdate={true}
         onEvents={onEvents}
       />
     </div>

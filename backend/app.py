@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, Response, stream_with_context
+from flask import Flask, jsonify, Response, stream_with_context, request
 from flask_cors import CORS
 import paho.mqtt.client as mqtt
 import json
@@ -187,25 +187,45 @@ def stream_temperature():
 
 @app.route('/api/influxdb/temperature', methods=['GET'])
 def get_temperature_history():
-    """InfluxDB에서 1시간 온도 데이터 조회"""
+    """InfluxDB에서 온도 데이터 조회 (range 파라미터로 시간 범위 지정)"""
     try:
         if influx_client is None:
             return jsonify({'error': 'InfluxDB not connected'}), 500
         
+        # range 파라미터 가져오기 (기본값: 1h)
+        range_param = request.args.get('range', '1h')
+        
         # 쿼리 API 생성
         query_api = influx_client.query_api()
         
-        # 1시간 전부터 현재까지의 데이터 조회
-        start_time = datetime.utcnow() - timedelta(hours=1)
+        # range에 따라 시작 시간과 윈도우 간격 계산
+        now = datetime.utcnow()
+        if range_param == '1h':
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        elif range_param == '6h':
+            start_time = now - timedelta(hours=6)
+            window_interval = '1m'
+        elif range_param == '24h':
+            start_time = now - timedelta(hours=24)
+            window_interval = '5m'
+        elif range_param == '7d':
+            start_time = now - timedelta(days=7)
+            window_interval = '30m'
+        else:
+            # 기본값: 1시간
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        
         start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         
-        # Flux 쿼리 작성
+        # Flux 쿼리 작성 (createEmpty: true로 설정하여 빈 시간대도 포함)
         query = f'''
         from(bucket: "{INFLUXDB_BUCKET}")
           |> range(start: {start_time_str})
           |> filter(fn: (r) => r["_measurement"] == "temperature")
           |> filter(fn: (r) => r["_field"] == "value")
-          |> aggregateWindow(every: 10s, fn: mean, createEmpty: false)
+          |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
           |> yield(name: "mean")
         '''
         
@@ -218,8 +238,11 @@ def get_temperature_history():
         
         for table in result:
             for record in table.records:
-                timestamps.append(record.get_time().timestamp() * 1000)  # JavaScript timestamp (ms)
-                values.append(record.get_value())
+                timestamp = record.get_time().timestamp() * 1000  # JavaScript timestamp (ms)
+                value = record.get_value()
+                timestamps.append(timestamp)
+                # 데이터가 없으면 null로 설정 (빈 시간대)
+                values.append(value if value is not None else None)
         
         # 시간순 정렬
         if timestamps and values:

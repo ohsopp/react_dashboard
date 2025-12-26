@@ -56,7 +56,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       },
       confine: true, // tooltip이 차트 영역 내에 제한되도록
       appendToBody: false, // body에 append하지 않고 차트 내부에 유지
-      renderMode: 'html', // HTML 렌더링 모드 사용
+      renderMode: 'richText', // richText 모드 사용 (HTML DOM 조작 최소화, innerHTML 오류 방지)
       axisPointer: {
         type: 'line',
         lineStyle: {
@@ -76,28 +76,28 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       formatter: function(params) {
         try {
           if (!params || !Array.isArray(params) || params.length === 0) {
-            return '<div>데이터 없음</div>'
+            return '데이터 없음'
           }
           const param = params[0]
           if (!param || param === null || param === undefined) {
-            return '<div>데이터 없음</div>'
+            return '데이터 없음'
           }
           const name = param.name || param.axisValue || ''
           const seriesName = param.seriesName || 'Temperature'
           
           if (param.value === null || param.value === undefined || isNaN(param.value)) {
-            return `<div>${name}<br/>${seriesName}: --</div>`
+            return `${name}\n${seriesName}: --`
           }
           
           const value = Number(param.value)
           if (isNaN(value)) {
-            return `<div>${name}<br/>${seriesName}: --</div>`
+            return `${name}\n${seriesName}: --`
           }
           
-          return `<div>${name}<br/>${seriesName}: ${value.toFixed(1)}°C</div>`
+          return `${name}\n${seriesName}: ${value.toFixed(1)}°C`
         } catch (error) {
           console.warn('Tooltip formatter error:', error)
-          return '<div>데이터 없음</div>'
+          return '데이터 없음'
         }
       },
       // tooltip이 표시되지 않을 때를 대비한 안전장치

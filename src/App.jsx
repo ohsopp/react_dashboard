@@ -51,6 +51,7 @@ function App() {
         title: 'Temperature History', 
         content: temperatureHistory.timestamps.length > 0 ? (
           <Chart 
+            key={`chart-${selectedRange}`}
             type="line" 
             data={chartData}
             dataZoomStart={dataZoomRange.start}
@@ -150,12 +151,28 @@ function App() {
       if (response.ok) {
         const data = await response.json()
         // 요청 시점의 range와 현재 selectedRange가 일치하고 요청이 취소되지 않은 경우에만 데이터 설정
-        // ref를 통해 최신 selectedRange 확인
-        if (requestRange === selectedRangeRef.current && !abortController.signal.aborted) {
-          setTemperatureHistory({
-            timestamps: data.timestamps || [],
-            values: data.values || []
-          })
+        // ref를 통해 최신 selectedRange 확인 (클로저 문제 해결)
+        const currentRange = selectedRangeRef.current
+        const isAborted = abortController.signal.aborted
+        
+        if (requestRange === currentRange && !isAborted) {
+          // 데이터가 있을 때만 업데이트
+          if (data.timestamps && data.timestamps.length > 0) {
+            // 한 번 더 최신 range 확인 (이중 체크로 비동기 응답 순서 문제 해결)
+            if (selectedRangeRef.current === requestRange) {
+              setTemperatureHistory({
+                timestamps: data.timestamps || [],
+                values: data.values || []
+              })
+              console.log(`✅ 데이터 업데이트: ${requestRange} 범위, ${data.timestamps.length}개 데이터 포인트`)
+            } else {
+              console.log(`⚠️ 응답 무시: 최종 확인 시 범위 불일치 (요청: ${requestRange}, 현재: ${selectedRangeRef.current})`)
+            }
+          } else {
+            console.log(`⚠️ 응답 무시: 데이터가 없음 (${requestRange} 범위)`)
+          }
+        } else {
+          console.log(`⚠️ 응답 무시: 요청 범위(${requestRange})와 현재 범위(${currentRange}) 불일치 또는 취소됨`)
         }
       }
     } catch (error) {
@@ -164,25 +181,31 @@ function App() {
         console.error('온도 히스토리 데이터 가져오기 실패:', error)
       }
     }
-  }, []) // 의존성 배열을 비워서 함수가 재생성되지 않도록 함
+  }, []) // 의존성 배열을 비워서 함수가 재생성되지 않도록 함 (클로저 문제 해결)
 
   // selectedRange가 변경되면 해당 범위의 데이터 로드
   useEffect(() => {
+    // ref 업데이트 (최신 selectedRange 추적)
+    selectedRangeRef.current = selectedRange
+    
     // 이전 요청 취소
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
     
+    // 이전 데이터 완전히 초기화 (다른 범위 그래프가 보이지 않도록)
+    setTemperatureHistory({ timestamps: [], values: [] })
+    
     // dataZoom 초기화
     setDataZoomRange({ start: 0, end: 100 })
     
-    // 현재 selectedRange로 데이터 로드
-    fetchTemperatureHistory(selectedRange)
+    // 현재 selectedRange로 데이터 로드 (ref를 통해 최신 값 사용)
+    fetchTemperatureHistory(selectedRangeRef.current)
     
     // 5초마다 데이터 업데이트 (실시간)
     // interval 내부에서 ref를 통해 최신 selectedRange 사용 (클로저 문제 해결)
     const interval = setInterval(() => {
-      // ref를 통해 최신 selectedRange 사용
+      // ref를 통해 최신 selectedRange 사용 (항상 최신 값 참조)
       fetchTemperatureHistory(selectedRangeRef.current)
     }, 5000)
 
@@ -193,7 +216,7 @@ function App() {
         abortControllerRef.current.abort()
       }
     }
-  }, [selectedRange, fetchTemperatureHistory]) // fetchTemperatureHistory도 의존성에 추가
+  }, [selectedRange]) // fetchTemperatureHistory는 ref를 사용하므로 의존성에서 제거 (클로저 문제 해결)
 
   // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import './Chart.css';
 
@@ -17,6 +17,14 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   // ECharts 옵션 생성
   const dataset = data.datasets[0];
   
+  // timeRange 변경 시 dataZoom 초기화를 위한 ref
+  const previousTimeRangeRef = useRef(timeRange);
+  
+  // yAxis 범위 통일 (모든 시간 범위에서 동일한 고정 범위 사용)
+  // 온도 데이터의 일반적인 범위를 고려하여 0도부터 50도까지 고정
+  const yAxisMin = 0;
+  const yAxisMax = 50;
+  
   // 데이터가 충분한 경우 dataZoom 초기 범위 설정 (최근 20%만 표시)
   const dataLength = dataset.data.length;
   const initialEnd = dataLength > 10 ? 100 : 100; // 데이터가 많으면 최근 20%만 표시
@@ -28,6 +36,38 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     end: dataZoomEnd !== undefined ? dataZoomEnd : initialEnd 
   });
   
+  // timeRange가 변경되면 dataZoom 초기화 및 ECharts 옵션 리셋
+  useEffect(() => {
+    if (previousTimeRangeRef.current !== timeRange) {
+      previousTimeRangeRef.current = timeRange;
+      dataZoomStateRef.current.start = 0;
+      dataZoomStateRef.current.end = 100;
+      if (onDataZoomChange) {
+        onDataZoomChange(0, 100);
+      }
+      
+      // ECharts 인스턴스를 명시적으로 리셋하여 이전 범위의 yAxis가 남지 않도록 함
+      if (chartRef.current && chartRef.current.getEchartsInstance) {
+        setTimeout(() => {
+          try {
+            const echartsInstance = chartRef.current.getEchartsInstance();
+            if (echartsInstance && (!echartsInstance.isDisposed || !echartsInstance.isDisposed())) {
+              // yAxis를 명시적으로 리셋
+              echartsInstance.setOption({
+                yAxis: {
+                  min: undefined,
+                  max: undefined
+                }
+              }, { notMerge: false, lazyUpdate: false });
+            }
+          } catch (error) {
+            console.warn('ECharts yAxis reset error:', error);
+          }
+        }, 50);
+      }
+    }
+  }, [timeRange, onDataZoomChange]);
+  
   // props가 변경되면 ref 업데이트
   useEffect(() => {
     if (dataZoomStart !== undefined && dataZoomEnd !== undefined) {
@@ -36,7 +76,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     }
   }, [dataZoomStart, dataZoomEnd]);
   
-  const echartsOption = {
+  // echartsOption을 useMemo로 감싸서 데이터나 timeRange가 변경될 때만 재생성
+  const echartsOption = useMemo(() => ({
     animation: false, // 실시간 업데이트를 위해 애니메이션 비활성화
     grid: {
       left: 50,
@@ -183,14 +224,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       },
       boundaryGap: [0, '10%'], // 상단에 10% 여유 공간
       scale: false,
-      min: (value) => {
-        const minValue = Math.min(...dataset.data);
-        return Math.floor(minValue) - 2;
-      },
-      max: (value) => {
-        const maxValue = Math.max(...dataset.data);
-        return Math.ceil(maxValue) + 2;
-      },
+      min: yAxisMin, // 명시적인 값 사용 (함수 대신)
+      max: yAxisMax, // 명시적인 값 사용 (함수 대신)
       axisLine: {
         show: false
       },
@@ -255,7 +290,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       }
     ],
     ...options // 추가 옵션 병합
-  };
+  }), [dataset.data, dataset.label, data.labels, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax]); // 의존성 배열에 필요한 값들 추가
 
   // dataZoom 이벤트 핸들러 - 사용자가 슬라이더를 조작할 때 위치 저장 및 부모에 알림
   const onEvents = {

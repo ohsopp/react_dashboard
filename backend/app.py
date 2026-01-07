@@ -24,7 +24,7 @@ MQTT_PORT = 1883
 MQTT_TOPIC = 'temp001'
 
 # InfluxDB 설정
-INFLUXDB_URL = 'http://localhost:8089'
+INFLUXDB_URL = 'http://localhost:8090'
 INFLUXDB_TOKEN = 'my-super-secret-auth-token'
 INFLUXDB_ORG = 'my-org'
 INFLUXDB_BUCKET = 'temperature_data'

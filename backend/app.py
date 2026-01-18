@@ -131,6 +131,8 @@ try:
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
     mqtt_client.on_disconnect = on_disconnect
+    # 자동 재연결 설정
+    mqtt_client.reconnect_delay_set(min_delay=1, max_delay=120)
 except Exception as e:
     print(f"❌ Error initializing MQTT client: {e}")
     mqtt_client = None
@@ -146,8 +148,20 @@ def connect_mqtt():
         print("🔄 MQTT loop started")
     except Exception as e:
         print(f"❌ MQTT Connection error: {e}")
+        print(f"💡 네트워크 연결을 확인하고 잠시 후 자동으로 재연결을 시도합니다.")
         import traceback
         traceback.print_exc()
+        # 재연결 시도 (5초 후)
+        import threading
+        def retry_connect():
+            import time
+            time.sleep(5)
+            if mqtt_client is not None:
+                try:
+                    mqtt_client.reconnect()
+                except:
+                    pass
+        threading.Thread(target=retry_connect, daemon=True).start()
 
 # 백그라운드에서 MQTT 연결
 mqtt_thread = threading.Thread(target=connect_mqtt, daemon=True)

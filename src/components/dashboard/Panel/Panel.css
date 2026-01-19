@@ -48,7 +48,7 @@
 }
 
 .panel-content {
-  padding: 20px;
+  padding: 12px;
   flex: 1; /* 남은 공간을 채우도록 */
   overflow-y: auto; /* 내용이 많을 경우 스크롤 */
   background: #161b22;

@@ -19,9 +19,9 @@ app = Flask(__name__)
 CORS(app)
 
 # MQTT 설정
-MQTT_BROKER = '192.168.1.86'
+MQTT_BROKER = '192.168.1.3'
 MQTT_PORT = 1883
-MQTT_TOPIC = 'temp001'
+MQTT_TOPIC = 'TP3237'  # 온도 센서 토픽
 
 # InfluxDB 설정
 INFLUXDB_URL = 'http://localhost:8090'
@@ -74,10 +74,14 @@ def on_message(client, userdata, msg):
         try:
             data = json.loads(message_str)
             
-            # temp001 토픽인 경우 특별 처리
-            if msg.topic == 'temp001':
-                # JSON에서 16진수 데이터 추출
-                hex_data = data.get('data', {}).get('payload', {}).get('/iolinkmaster/port[1]/iolinkdevice/pdin', {}).get('data')
+            # TP3237 토픽인 경우 특별 처리 (iolink 구조)
+            if msg.topic == 'TP3237':
+                # JSON에서 16진수 데이터 추출 (port[2] 사용)
+                payload = data.get('data', {}).get('payload', {})
+                hex_data = payload.get('/iolinkmaster/port[2]/iolinkdevice/pdin', {}).get('data')
+                # port[1]도 확인 (호환성을 위해)
+                if not hex_data:
+                    hex_data = payload.get('/iolinkmaster/port[1]/iolinkdevice/pdin', {}).get('data')
                 
                 if hex_data:
                     # 16진수를 온도로 변환
@@ -106,10 +110,27 @@ def on_message(client, userdata, msg):
                     print("⚠️ Hex data not found in message structure")
                     print(f"📋 Message structure: {json.dumps(data, indent=2)}")
             else:
-                # 다른 토픽의 경우 기존 로직 사용
+                # 다른 토픽의 경우 일반 로직 사용 (temperature, temp, value 필드 확인)
                 temp_value = data.get('temperature') or data.get('temp') or data.get('value')
                 if temp_value is not None:
-                    mqtt_queue.put({'temperature': float(temp_value), 'timestamp': time.time()})
+                    temperature = float(temp_value)
+                    print(f"🌡️ Temperature extracted: {temperature}°C")
+                    
+                    # SSE로 전송할 데이터 큐에 추가
+                    mqtt_queue.put({'temperature': temperature, 'timestamp': time.time()})
+                    
+                    # InfluxDB에 저장
+                    if write_api:
+                        try:
+                            point = Point("temperature") \
+                                .field("value", float(temperature)) \
+                                .time(time.time_ns())
+                            write_api.write(bucket=INFLUXDB_BUCKET, record=point)
+                            print(f"💾 Saved to InfluxDB: {temperature}°C")
+                        except Exception as e:
+                            print(f"❌ InfluxDB write error: {e}")
+                            import traceback
+                            traceback.print_exc()
         except json.JSONDecodeError as e:
             print(f"❌ JSON decode error: {e}")
             print(f"📋 Raw message: {message_str}")
@@ -413,4 +434,4 @@ def export_temperature_csv():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5005)
+    app.run(debug=True, host='0.0.0.0', port=5005)

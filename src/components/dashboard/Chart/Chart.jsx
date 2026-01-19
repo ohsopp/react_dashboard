@@ -556,10 +556,10 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   const echartsOption = useMemo(() => ({
     animation: false, // 실시간 업데이트를 위해 애니메이션 비활성화
     grid: {
-      left: 45,
+      left: 25,
       right: 25,
       top: 30, // 그래프 위쪽 여백 축소
-      bottom: 75, // 슬라이더 높이를 위해 하단 여백 (축소)
+      bottom: 95, // 슬라이더 높이를 위해 하단 여백 (축소)
       containLabel: true
     },
     tooltip: {

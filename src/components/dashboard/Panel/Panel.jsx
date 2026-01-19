@@ -181,6 +181,7 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
             subtitle={subtitle}
             onHide={onHide}
             onCsvClick={() => setIsCsvModalOpen(true)}
+            showCsv={id && !id.startsWith('stat-panel')}
           />
         )}
         <div className="panel-content">

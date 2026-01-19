@@ -113,44 +113,78 @@ function App() {
             options={{}}
           />
         )
-      },
-      { id: 'panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">24.6°C</div></div> },
-      { id: 'panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-      { id: 'panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">1,419</div></div> },
+      }
       ]
     }, [temperature, temperatureHistory, selectedRange, dataZoomRange])
+
+  // 통계 패널 설정 (별도 관리)
+  const statPanelConfigs = useMemo(() => {
+    // 온도 평균 계산
+    let avgTemperature = '--'
+    if (temperatureHistory.values && temperatureHistory.values.length > 0) {
+      const validValues = temperatureHistory.values.filter(v => v !== null && v !== undefined && !isNaN(v))
+      if (validValues.length > 0) {
+        const sum = validValues.reduce((acc, val) => acc + val, 0)
+        avgTemperature = (sum / validValues.length).toFixed(1) + '°C'
+      }
+    }
+    
+    // 데이터 포인트 개수
+    const dataPoints = temperatureHistory.values ? temperatureHistory.values.length : 0
+    
+    return [
+      { id: 'stat-panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">{avgTemperature}</div></div> },
+      { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
+      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">{dataPoints.toLocaleString()}</div></div> }
+    ]
+  }, [temperature, temperatureHistory])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
     panel2: 6,  // 2/4
     panel3: 6,  // 2/4
     panel4: 6,  // 2/4
-    panel5: 6,  // 2/4
-    panel6: 4,  // 1/3
-    panel7: 4,  // 1/3
-    panel8: 4   // 1/3
+    panel5: 6   // 2/4
   })
+  
+  // 통계 패널 전용 사이즈/순서/숨김 관리
+  const [statPanelSizes, setStatPanelSizes] = useState({
+    'stat-panel6': 4,  // 1/3
+    'stat-panel7': 4,  // 1/3
+    'stat-panel8': 4   // 1/3
+  })
+  
   const [isDragging, setIsDragging] = useState(false)
+  const [isStatDragging, setIsStatDragging] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const sortableInstance = useRef(null)
+  const statSortableInstance = useRef(null)
   const containerRef = useRef(null)
+  const statContainerRef = useRef(null)
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4, 5, 6, 7]
+    return [0, 1, 2, 3, 4]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5, 6, 7])
+  const [statPanelOrder, setStatPanelOrder] = useState(() => {
+    return [0, 1, 2]
+  })
+  
+  const panelOrderRef = useRef([0, 1, 2, 3, 4])
+  const statPanelOrderRef = useRef([0, 1, 2])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
     panel3: 6,
     panel4: 6,
-    panel5: 6,
-    panel6: 4,
-    panel7: 4,
-    panel8: 4
+    panel5: 6
+  })
+  const statPanelSizesRef = useRef({
+    'stat-panel6': 4,
+    'stat-panel7': 4,
+    'stat-panel8': 4
   })
   
   // panelConfigs의 길이가 변경되면 panelOrderRef 업데이트 (무한 루프 방지)
@@ -322,6 +356,19 @@ function App() {
     }
     return []
   })
+  
+  const [hiddenStatPanels, setHiddenStatPanels] = useState(() => {
+    // localStorage에서 숨겨진 통계 패널 로드
+    try {
+      const saved = localStorage.getItem('hidden-stat-panels')
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (e) {
+      console.error('숨겨진 통계 패널 로드 실패:', e)
+    }
+    return []
+  })
 
   // ref 업데이트
   useEffect(() => {
@@ -331,6 +378,26 @@ function App() {
   useEffect(() => {
     panelSizesRef.current = panelSizes
   }, [panelSizes])
+  
+  useEffect(() => {
+    statPanelOrderRef.current = statPanelOrder
+  }, [statPanelOrder])
+  
+  useEffect(() => {
+    statPanelSizesRef.current = statPanelSizes
+  }, [statPanelSizes])
+  
+  // statPanelConfigs의 길이가 변경되면 statPanelOrderRef 업데이트
+  const statPanelConfigsLength = statPanelConfigs.length
+  useEffect(() => {
+    const newOrder = statPanelConfigs.map((_, index) => index)
+    if (statPanelOrder.length !== newOrder.length) {
+      statPanelOrderRef.current = newOrder
+      setStatPanelOrder(newOrder)
+    } else {
+      statPanelOrderRef.current = newOrder
+    }
+  }, [statPanelConfigsLength])
 
   const handleSizeChange = (panelId, newSize) => {
     setPanelSizes(prev => ({
@@ -339,6 +406,15 @@ function App() {
     }))
     // 레이아웃 저장
     setTimeout(() => saveLayout(), 0)
+  }
+  
+  const handleStatSizeChange = (panelId, newSize) => {
+    setStatPanelSizes(prev => ({
+      ...prev,
+      [panelId]: newSize
+    }))
+    // 레이아웃 저장
+    setTimeout(() => saveStatLayout(), 0)
   }
 
   // 그리드 레이아웃에서 각 패널이 속한 줄을 계산
@@ -426,6 +502,22 @@ function App() {
       return newHidden
     })
   }
+  
+  // 통계 패널 숨기기
+  const handleHideStatPanel = (panelId) => {
+    setHiddenStatPanels(prev => {
+      if (prev.includes(panelId)) {
+        return prev
+      }
+      const newHidden = [...prev, panelId]
+      try {
+        localStorage.setItem('hidden-stat-panels', JSON.stringify(newHidden))
+      } catch (e) {
+        console.error('숨겨진 통계 패널 저장 실패:', e)
+      }
+      return newHidden
+    })
+  }
 
   // 패널 다시 표시하기 (편집 버튼에서 사용)
   const handleShowPanel = (panelId) => {
@@ -436,6 +528,19 @@ function App() {
         localStorage.setItem('hidden-panels', JSON.stringify(newHidden))
       } catch (e) {
         console.error('숨겨진 패널 저장 실패:', e)
+      }
+      return newHidden
+    })
+  }
+  
+  // 통계 패널 다시 표시하기
+  const handleShowStatPanel = (panelId) => {
+    setHiddenStatPanels(prev => {
+      const newHidden = prev.filter(id => id !== panelId)
+      try {
+        localStorage.setItem('hidden-stat-panels', JSON.stringify(newHidden))
+      } catch (e) {
+        console.error('숨겨진 통계 패널 저장 실패:', e)
       }
       return newHidden
     })
@@ -473,6 +578,34 @@ function App() {
       localStorage.setItem('dashboard-layout', JSON.stringify(layout))
     } catch (e) {
       console.error('레이아웃 저장 실패:', e)
+    }
+  }
+  
+  // 통계 패널 레이아웃 저장
+  const saveStatLayout = () => {
+    try {
+      const layout = {
+        panels: {},
+        order: {}
+      }
+      
+      const currentSizes = statPanelSizesRef.current
+      Object.keys(currentSizes).forEach(panelId => {
+        layout.panels[panelId] = {
+          width: currentSizes[panelId]
+        }
+      })
+      
+      if (statContainerRef.current) {
+        const panels = Array.from(statContainerRef.current.querySelectorAll('.panel:not(.hidden)'))
+        layout.order['stats-container'] = panels.map(panel => 
+          panel.getAttribute('data-panel-id')
+        ).filter(id => id)
+      }
+      
+      localStorage.setItem('stat-dashboard-layout', JSON.stringify(layout))
+    } catch (e) {
+      console.error('통계 패널 레이아웃 저장 실패:', e)
     }
   }
 
@@ -560,6 +693,96 @@ function App() {
       }
     }, [isModalOpen]) // 모달 상태 변경 시 재초기화
 
+  // 통계 패널용 SortableJS 초기화
+  useEffect(() => {
+    const initStatSortable = () => {
+      if (!statContainerRef.current) return
+
+      // 기존 인스턴스 제거
+      if (statSortableInstance.current) {
+        statSortableInstance.current.destroy()
+        statSortableInstance.current = null
+      }
+
+      // SortableJS 인스턴스 생성
+      try {
+        statSortableInstance.current = new Sortable(statContainerRef.current, {
+          animation: 150,
+          ghostClass: 'sortable-ghost',
+          chosenClass: 'sortable-chosen',
+          dragClass: 'sortable-drag',
+          filter: '.panel-resize-handle, button, .panel-modal-close, .chart-container',
+          preventOnFilter: false,
+          disabled: isModalOpen,
+          
+          onStart: (evt) => {
+            if (isModalOpen || document.querySelector('.panel-modal-overlay')) {
+              evt.cancel()
+              return
+            }
+            setIsStatDragging(true)
+            evt.item.classList.add('dragging', 'sortable-selected')
+          },
+          
+          onEnd: (evt) => {
+            const panel = evt.item
+            panel.classList.remove('dragging', 'sortable-selected')
+            
+            const oldIndex = evt.oldIndex
+            const newIndex = evt.newIndex
+            
+            if (oldIndex === newIndex) {
+              setIsStatDragging(false)
+              return
+            }
+
+            const currentOrder = statPanelOrderRef.current
+            const newOrder = [...currentOrder]
+            const [draggedOrder] = newOrder.splice(oldIndex, 1)
+            newOrder.splice(newIndex, 0, draggedOrder)
+
+            setStatPanelOrder(newOrder)
+            
+            setTimeout(() => {
+              updateStatPanelOrder()
+              saveStatLayout()
+            }, 0)
+            
+            setTimeout(() => {
+              setIsStatDragging(false)
+            }, 100)
+          }
+        })
+      } catch (error) {
+        console.error('통계 패널 SortableJS 초기화 실패:', error)
+      }
+    }
+
+    const timer = setTimeout(initStatSortable, 0)
+
+    return () => {
+      clearTimeout(timer)
+      if (statSortableInstance.current) {
+        statSortableInstance.current.destroy()
+        statSortableInstance.current = null
+      }
+    }
+  }, [isModalOpen])
+
+  // 통계 패널 순서 업데이트
+  const updateStatPanelOrder = () => {
+    if (!statContainerRef.current) return
+    
+    const panels = Array.from(statContainerRef.current.querySelectorAll('.panel:not(.hidden)'))
+    const newOrder = panels.map(panel => {
+      const panelId = panel.getAttribute('data-panel-id')
+      const index = statPanelConfigs.findIndex(config => config.id === panelId)
+      return index !== -1 ? index : null
+    }).filter(index => index !== null)
+    
+    setStatPanelOrder(newOrder)
+  }
+
   const handleEdit = () => {
     setIsEditModalOpen(true)
   }
@@ -578,6 +801,38 @@ function App() {
         onEdit={handleEdit}
       />
       
+      {/* 통계 패널 그리드 (상단 작은 카드) */}
+      <div 
+        ref={statContainerRef}
+        className="stats-container"
+        id="stats-container"
+      >
+        {statPanelOrder
+          .filter(orderIndex => statPanelConfigs[orderIndex] && !hiddenStatPanels.includes(statPanelConfigs[orderIndex].id))
+          .map((orderIndex, index) => {
+            const config = statPanelConfigs[orderIndex]
+            if (!config) return null
+            return (
+              <Panel 
+                key={config.id}
+                id={config.id}
+                index={index}
+                title={config.title}
+                subtitle={null}
+                size={statPanelSizes[config.id]}
+                onSizeChange={handleStatSizeChange}
+                isDragging={isStatDragging}
+                onModalOpen={() => setIsModalOpen(true)}
+                onModalClose={() => setIsModalOpen(false)}
+                onHide={() => handleHideStatPanel(config.id)}
+              >
+                {config.content}
+              </Panel>
+            )
+          })}
+      </div>
+      
+      {/* 메인 패널 그리드 */}
       <div 
         ref={containerRef}
         className="dashboard-container"
@@ -611,9 +866,16 @@ function App() {
       <EditModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        hiddenPanels={hiddenPanels}
-        panelConfigs={panelConfigs}
-        onShowPanel={handleShowPanel}
+        hiddenPanels={[...hiddenPanels, ...hiddenStatPanels]}
+        panelConfigs={[...panelConfigs, ...statPanelConfigs]}
+        onShowPanel={(panelId) => {
+          // 통계 패널인지 확인
+          if (panelId.startsWith('stat-panel')) {
+            handleShowStatPanel(panelId)
+          } else {
+            handleShowPanel(panelId)
+          }
+        }}
       />
     </div>
   )

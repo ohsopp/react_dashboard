@@ -4,6 +4,19 @@
   color: #d8d9da;
 }
 
+/* 통계 패널 그리드 (상단 작은 카드) */
+.stats-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: minmax(80px, 120px); /* 작은 카드 높이 */
+  gap: 8px;
+  align-items: stretch;
+  background: #0a0a0b;
+}
+
 .dashboard-container {
   width: 100%;
   margin: 0 auto;

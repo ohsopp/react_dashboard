@@ -1,9 +1,9 @@
-/* Panel 스타일 */
+/* Panel 스타일 - Grafana 스타일 */
 .panel {
-  background: #0d1117;
-  border: 1px solid #21262d;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background: #1f1f23;
+  border: 1px solid #2d2d33;
+  border-radius: 2px;
+  box-shadow: none;
   padding: 0;
   margin-bottom: 0; /* 그리드 gap으로 간격 처리 */
   overflow: hidden;
@@ -11,12 +11,11 @@
   height: 100%; /* 그리드 셀을 꽉 채우도록 */
   display: flex;
   flex-direction: column;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.2s ease;
 }
 
 .panel:hover {
-  border-color: #30363d;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-color: #464c56;
   cursor: grab;
 }
 
@@ -48,13 +47,13 @@
 }
 
 .panel-content {
-  padding: 12px;
+  padding: 8px;
   flex: 1; /* 남은 공간을 채우도록 */
   overflow-y: auto; /* 내용이 많을 경우 스크롤 */
-  background: #161b22;
-  color: #ffffff;
+  background: #1f1f23;
+  color: #d8d9da;
   scrollbar-width: thin;
-  scrollbar-color: #30363d transparent;
+  scrollbar-color: #464c56 transparent;
 }
 
 .panel-content::-webkit-scrollbar {
@@ -66,12 +65,12 @@
 }
 
 .panel-content::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 4px;
+  background: #464c56;
+  border-radius: 2px;
 }
 
 .panel-content::-webkit-scrollbar-thumb:hover {
-  background: #484f58;
+  background: #6e7681;
 }
 
 /* 리사이즈 핸들 */

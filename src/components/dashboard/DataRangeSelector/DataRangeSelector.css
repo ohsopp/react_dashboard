@@ -1,16 +1,16 @@
 .data-range-selector {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  background: #0d1117;
-  border-bottom: 1px solid #21262d;
-  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 16px;
+  background: #1f1f23;
+  border-bottom: 1px solid #2d2d33;
+  justify-content: flex-start;
 }
 
 .data-range-label {
-  color: #8b949e;
-  font-size: 14px;
+  color: #8e9196;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -20,24 +20,24 @@
 }
 
 .data-range-button {
-  padding: 6px 16px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  color: #c9d1d9;
-  font-size: 14px;
+  padding: 4px 12px;
+  background: #2d2d33;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  color: #d8d9da;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .data-range-button:hover {
-  background: #30363d;
-  border-color: #58a6ff;
+  background: #464c56;
+  border-color: #6e7681;
 }
 
 .data-range-button.active {
-  background: #1f6feb;
-  border-color: #1f6feb;
+  background: #3274d9;
+  border-color: #3274d9;
   color: #ffffff;
 }
 

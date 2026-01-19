@@ -1,39 +1,47 @@
 .panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: #161b22;
+  justify-content: center;
+  padding: 0px;
+  background: #1f1f23;
+  border-bottom: none;
+  min-height: 32px;
+  position: relative;
 }
 
 .panel-header-left {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  align-items: flex-start;
+  align-items: center;
   flex: 1;
+  justify-content: center;
 }
 
 .panel-header-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .panel-csv-button {
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 6px 12px;
+  background: #2d2d33;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  padding: 4px 8px;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  color: #c9d1d9;
-  font-size: 13px;
+  color: #d8d9da;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -49,8 +57,8 @@
 }
 
 .panel-csv-button:hover {
-  background: #30363d;
-  border-color: #58a6ff;
+  background: #464c56;
+  border-color: #6e7681;
 }
 
 .panel-csv-button:hover .csv-text,
@@ -60,16 +68,16 @@
 
 .panel-hide-button {
   background: transparent;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 6px;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  padding: 4px;
   cursor: pointer;
   display: none;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -81,8 +89,8 @@
 }
 
 .panel-hide-button:hover {
-  background: #21262d;
-  border-color: #58a6ff;
+  background: #2d2d33;
+  border-color: #6e7681;
 }
 
 .panel-hide-button:hover img {
@@ -91,15 +99,15 @@
 
 .panel-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #c9d1d9;
-  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: #d8d9da;
+  text-align: center;
 }
 
 .panel-subtitle {
-  font-size: 12px;
-  color: #8b949e;
-  text-align: left;
+  font-size: 11px;
+  color: #8e9196;
+  text-align: center;
 }
 

@@ -460,14 +460,106 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     }
   }, [dataZoomStart, dataZoomEnd]);
   
+  // 시간 범위에 따라 적절한 틱 간격 계산 (전체 범위를 8개 이하로 균등 분할)
+  const calculateTickInterval = useMemo(() => {
+    if (!data || !data.timestamps || !data.labels || data.timestamps.length === 0) {
+      return { intervalMinutes: 10, tickIndices: new Set() }
+    }
+    
+    const timestamps = data.timestamps
+    const startTime = timestamps[0]
+    const endTime = timestamps[timestamps.length - 1]
+    const timeRangeMs = endTime - startTime
+    const hours = timeRangeMs / (1000 * 60 * 60)
+    const days = hours / 24
+    
+    // 전체 시간 범위를 8개 이하로 나누는 적절한 간격 계산
+    // 목표: 6~8개의 틱으로 전체 범위를 균등하게 나누기
+    const targetTicks = 7 // 목표 틱 개수 (6~8개 범위의 중간값)
+    const targetIntervalMs = timeRangeMs / targetTicks
+    
+    // 깔끔한 시간 단위로 반올림 (5분, 10분, 30분, 1시간, 2시간, 4시간, 6시간, 12시간, 1일 등)
+    let intervalMs
+    if (targetIntervalMs <= 5 * 60 * 1000) {
+      // 5분 이하: 5분 단위
+      intervalMs = 5 * 60 * 1000
+    } else if (targetIntervalMs <= 10 * 60 * 1000) {
+      // 10분 이하: 10분 단위
+      intervalMs = 10 * 60 * 1000
+    } else if (targetIntervalMs <= 30 * 60 * 1000) {
+      // 30분 이하: 30분 단위
+      intervalMs = 30 * 60 * 1000
+    } else if (targetIntervalMs <= 60 * 60 * 1000) {
+      // 1시간 이하: 1시간 단위
+      intervalMs = 60 * 60 * 1000
+    } else if (targetIntervalMs <= 2 * 60 * 60 * 1000) {
+      // 2시간 이하: 2시간 단위
+      intervalMs = 2 * 60 * 60 * 1000
+    } else if (targetIntervalMs <= 4 * 60 * 60 * 1000) {
+      // 4시간 이하: 4시간 단위
+      intervalMs = 4 * 60 * 60 * 1000
+    } else if (targetIntervalMs <= 6 * 60 * 60 * 1000) {
+      // 6시간 이하: 6시간 단위
+      intervalMs = 6 * 60 * 60 * 1000
+    } else if (targetIntervalMs <= 12 * 60 * 60 * 1000) {
+      // 12시간 이하: 12시간 단위
+      intervalMs = 12 * 60 * 60 * 1000
+    } else if (targetIntervalMs <= 24 * 60 * 60 * 1000) {
+      // 1일 이하: 1일 단위
+      intervalMs = 24 * 60 * 60 * 1000
+    } else {
+      // 1일 초과: 1일 단위 (최대 7일 범위)
+      intervalMs = 24 * 60 * 60 * 1000
+    }
+    
+    // 틱 시간 목록 생성 (전체 범위를 커버하도록)
+    const tickTimes = []
+    let currentTime = Math.ceil(startTime / intervalMs) * intervalMs
+    
+    // 전체 범위를 커버하면서 최대 8개까지만 생성
+    while (currentTime <= endTime && tickTimes.length < 8) {
+      tickTimes.push(currentTime)
+      currentTime += intervalMs
+    }
+    
+    // 마지막 틱이 끝 시간과 너무 멀면 끝 시간도 추가 (8개 미만일 경우만)
+    if (tickTimes.length < 8 && endTime > tickTimes[tickTimes.length - 1] + intervalMs / 2) {
+      tickTimes.push(endTime)
+    }
+    
+    // 각 틱 시간에 가장 가까운 데이터 포인트 찾기
+    const tickIndices = new Set()
+    
+    for (const tickTime of tickTimes) {
+      let closestIndex = 0
+      let minDiff = Math.abs(timestamps[0] - tickTime)
+      
+      for (let i = 1; i < timestamps.length; i++) {
+        const diff = Math.abs(timestamps[i] - tickTime)
+        if (diff < minDiff) {
+          minDiff = diff
+          closestIndex = i
+        }
+      }
+      
+      // 허용 오차 내에 있는 경우만 (간격의 50% 이내)
+      if (minDiff <= intervalMs / 2 && closestIndex < data.labels.length) {
+        tickIndices.add(closestIndex)
+      }
+    }
+    
+    const intervalMinutes = intervalMs / (60 * 1000)
+    return { intervalMinutes, tickIndices }
+  }, [data.timestamps, data.labels])
+  
   // echartsOption을 useMemo로 감싸서 데이터나 timeRange가 변경될 때만 재생성
   const echartsOption = useMemo(() => ({
     animation: false, // 실시간 업데이트를 위해 애니메이션 비활성화
     grid: {
       left: 45,
       right: 25,
-      top: 25, // 그래프 위쪽 여백 축소
-      bottom: 70, // 슬라이더 높이를 위해 하단 여백 (축소)
+      top: 30, // 그래프 위쪽 여백 축소
+      bottom: 75, // 슬라이더 높이를 위해 하단 여백 (축소)
       containLabel: true
     },
     tooltip: {
@@ -596,7 +688,40 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         color: '#7d8590',
         fontSize: 10,
         rotate: 0,
-        interval: 'auto'
+        interval: 0, // 모든 레이블을 체크하되, 틱 위치에만 표시
+        showMinLabel: false,
+        showMaxLabel: false,
+        formatter: function(value, index) {
+          // 틱 위치에만 레이블 표시
+          if (!calculateTickInterval.tickIndices.has(index)) {
+            return ''
+          }
+          
+          // timestamps가 없으면 원본 값 반환
+          if (!data || !data.timestamps || index >= data.timestamps.length) {
+            return value
+          }
+          
+          const timestamp = data.timestamps[index]
+          const date = new Date(timestamp)
+          
+          // 시간 범위에 따라 포맷 결정
+          const hours = (data.timestamps[data.timestamps.length - 1] - data.timestamps[0]) / (1000 * 60 * 60)
+          
+          if (hours > 24) {
+            // 7일 범위: 날짜 + 시간
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            const hour = String(date.getHours()).padStart(2, '0')
+            const minute = String(date.getMinutes()).padStart(2, '0')
+            return `${month}/${day} ${hour}:${minute}`
+          } else {
+            // 그 외: 시간만
+            const hour = String(date.getHours()).padStart(2, '0')
+            const minute = String(date.getMinutes()).padStart(2, '0')
+            return `${hour}:${minute}`
+          }
+        }
       }
     },
     yAxis: {
@@ -674,7 +799,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       }
     ],
     ...options // 추가 옵션 병합
-  }), [dataset.data, dataset.label, data.labels, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax]); // 의존성 배열에 필요한 값들 추가
+  }), [dataset.data, dataset.label, data.labels, data.timestamps, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax, calculateTickInterval]); // 의존성 배열에 필요한 값들 추가
 
   // dataZoom 이벤트 핸들러 - 사용자가 슬라이더를 조작할 때 위치 저장 및 부모에 알림
   const onEvents = {

@@ -1,22 +1,103 @@
-/* TopBar 스타일 */
+/* TopBar 스타일 - Grafana 스타일 */
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: #0d1117;
-  border-bottom: 1px solid #21262d;
+  padding: 8px 16px;
+  background: #1f1f23;
+  border-bottom: 1px solid #2d2d33;
+  height: 48px;
+  box-sizing: border-box;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
+.topbar-logo {
+  display: flex;
+  align-items: center;
+  color: #f2f2f2;
+}
 
 .topbar-right {
   display: flex;
   align-items: center;
+  gap: 12px;
+}
+
+.topbar-time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d8d9da;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 8px 6px 12px;
+  background: #2d2d33;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.topbar-time-range svg {
+  flex-shrink: 0;
+  color: #8e9196;
+}
+
+.time-range-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: 0.2px;
+}
+
+.kst-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: #3274d9;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 2px;
+  margin-left: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1.2;
+  min-width: 28px;
+  flex-shrink: 0;
+}
+
+.topbar-time-range svg {
+  flex-shrink: 0;
+}
+
+.topbar-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  color: #8e9196;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.topbar-refresh:hover {
+  background: #2d2d33;
+  border-color: #6e7681;
+  color: #d8d9da;
+}
+
+.topbar-refresh:active {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
 }
 
 .influxdb-link {

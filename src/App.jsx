@@ -567,6 +567,8 @@ function App() {
   return (
     <div className="App">
       <TopBar
+        timeRange={selectedRange}
+        onRefresh={() => fetchTemperatureHistory(selectedRange)}
         breadcrumbItems={['Home', 'Dashboards', 'Sensor Data']}
       />
       
@@ -592,7 +594,7 @@ function App() {
                 id={config.id}
                 index={index}
                 title={config.title}
-                subtitle={getSubtitle()}
+                subtitle={null}
                 size={panelSizes[config.id]}
                 onSizeChange={handleSizeChange}
                 isDragging={isDragging}

@@ -559,7 +559,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       left: 25,
       right: 25,
       top: 30, // 그래프 위쪽 여백 축소
-      bottom: 95, // 슬라이더 높이를 위해 하단 여백 (축소)
+      bottom: 85, // 슬라이더 높이를 위해 하단 여백 (축소)
       containLabel: true
     },
     tooltip: {
@@ -637,7 +637,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         type: 'slider', // 하단 슬라이더
         start: dataZoomStateRef.current.start,
         end: dataZoomStateRef.current.end,
-        height: 25, // 슬라이더 높이 축소
+        height: 30, // 슬라이더 높이 축소
         handleIcon: 'path://M30.9,53.2C16.8,53.2,5.3,41.7,5.3,27.6S16.8,2,30.9,2C45,2,56.4,13.5,56.4,27.6S45,53.2,30.9,53.2z M30.9,3.5C17.6,3.5,6.8,14.4,6.8,27.6c0,13.2,10.8,24.1,24.1,24.1C44.2,51.7,55,40.8,55,27.6C54.9,14.4,44.1,3.5,30.9,3.5z M36.9,35.8c0,0.6-0.4,1-1,1H26.8c-0.6,0-1-0.4-1-1V19.4c0-0.6,0.4-1,1-1h9.1c0.6,0,1,0.4,1,1V35.8z',
         handleSize: '80%',
         handleStyle: {

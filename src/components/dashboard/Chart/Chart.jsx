@@ -4,12 +4,64 @@ import './Chart.css';
 
 // Chart 컴포넌트
 const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange, value }) => {
+  // 공통 차트 리사이즈 훅
+  const useChartResize = (chartRef, containerRef) => {
+    useEffect(() => {
+      if (!containerRef.current || !chartRef.current) return;
+      
+      let resizeTimer = null;
+      
+      const resizeObserver = new ResizeObserver((entries) => {
+        // 디바운스: 연속된 리사이즈 이벤트를 하나로 묶음
+        if (resizeTimer) {
+          clearTimeout(resizeTimer);
+        }
+        
+        resizeTimer = setTimeout(() => {
+          if (chartRef.current && chartRef.current.getEchartsInstance) {
+            try {
+              const echartsInstance = chartRef.current.getEchartsInstance();
+              if (echartsInstance && (!echartsInstance.isDisposed || !echartsInstance.isDisposed())) {
+                // 컨테이너의 실제 크기를 가져와서 resize에 전달
+                const entry = entries[0];
+                if (entry) {
+                  const { width, height } = entry.contentRect;
+                  echartsInstance.resize({
+                    width: width,
+                    height: height
+                  });
+                } else {
+                  echartsInstance.resize();
+                }
+              }
+            } catch (error) {
+              // 차트가 아직 초기화되지 않았을 수 있음
+            }
+          }
+        }, 100); // 100ms 디바운스
+      });
+      
+      resizeObserver.observe(containerRef.current);
+      
+      return () => {
+        if (resizeTimer) {
+          clearTimeout(resizeTimer);
+        }
+        resizeObserver.disconnect();
+      };
+    }, []);
+  };
   // 미니 그래프 (통계 패널 배경용)
   if (type === 'mini') {
     // 데이터 검증
     if (!data || !data.values || !data.values.length) {
       return null;
     }
+    
+    const miniChartRef = useRef(null);
+    const miniContainerRef = useRef(null);
+    
+    useChartResize(miniChartRef, miniContainerRef);
     
     const miniData = data.values || [];
     const miniOptions = {
@@ -63,8 +115,9 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     };
     
     return (
-      <div className={`chart chart-mini ${className}`}>
+      <div ref={miniContainerRef} className={`chart chart-mini ${className}`}>
         <ReactECharts
+          ref={miniChartRef}
           option={miniOptions}
           style={{ width: '100%', height: '100%' }}
           opts={{ renderer: 'svg' }}
@@ -398,12 +451,15 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       ...options
     };
 
-    const chartRef = useRef(null);
+    const aqiChartRef = useRef(null);
+    const aqiContainerRef = useRef(null);
+    
+    useChartResize(aqiChartRef, aqiContainerRef);
 
     return (
-      <div className={`chart chart-${type} ${className}`}>
+      <div ref={aqiContainerRef} className={`chart chart-${type} ${className}`}>
         <ReactECharts
-          ref={chartRef}
+          ref={aqiChartRef}
           option={aqiOptions}
           style={{ width: '100%', height: '100%', minHeight: '300px' }}
           opts={{ renderer: 'svg' }}
@@ -519,9 +575,15 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       ...options
     };
 
+    const gaugeChartRef = useRef(null);
+    const gaugeContainerRef = useRef(null);
+    
+    useChartResize(gaugeChartRef, gaugeContainerRef);
+
     return (
-      <div className={`chart chart-${type} ${className}`}>
+      <div ref={gaugeContainerRef} className={`chart chart-${type} ${className}`}>
         <ReactECharts
+          ref={gaugeChartRef}
           option={gaugeOptions}
           style={{ width: '100%', height: '100%', minHeight: '200px' }}
           opts={{ renderer: 'svg' }}
@@ -534,6 +596,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
 
   // 막대 그래프인 경우 별도 처리
   if (type === 'bar') {
+    const barChartRef = useRef(null);
+    const barContainerRef = useRef(null);
+    
+    useChartResize(barChartRef, barContainerRef);
+    
     const xAxisData = [];
     const data1 = [];
     const data2 = [];
@@ -695,12 +762,10 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       ...options
     };
 
-    const chartRef = useRef(null);
-
     return (
-      <div className={`chart chart-${type} ${className}`}>
+      <div ref={barContainerRef} className={`chart chart-${type} ${className}`}>
         <ReactECharts
-          ref={chartRef}
+          ref={barChartRef}
           option={barOptions}
           style={{ width: '100%', height: '100%', minHeight: '200px' }}
           opts={{ renderer: 'svg' }}
@@ -736,6 +801,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
 
   // 파이 차트인 경우 별도 처리
   if (type === 'pie') {
+    const pieChartRef = useRef(null);
+    const pieContainerRef = useRef(null);
+    
+    useChartResize(pieChartRef, pieContainerRef);
+    
     const pieData = data.series?.data || [];
     
     const pieOptions = {
@@ -796,8 +866,9 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     };
 
     return (
-      <div className={`chart chart-${type} ${className}`}>
+      <div ref={pieContainerRef} className={`chart chart-${type} ${className}`}>
         <ReactECharts
+          ref={pieChartRef}
           option={pieOptions}
           style={{ width: '100%', height: '100%', minHeight: '200px' }}
           opts={{ renderer: 'svg' }}
@@ -1325,8 +1396,12 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     }
   };
 
+  const lineContainerRef = useRef(null);
+  useChartResize(chartRef, lineContainerRef);
+
   return (
     <div 
+      ref={lineContainerRef}
       className={`chart chart-${type} chart-container ${className}`}
       onMouseDown={handleSliderInteraction}
       onClick={handleSliderInteraction}

@@ -49,11 +49,12 @@
 .panel-content {
   padding: 8px;
   flex: 1; /* 남은 공간을 채우도록 */
-  overflow-y: auto; /* 내용이 많을 경우 스크롤 */
+  overflow: hidden; /* 차트가 패널을 넘치지 않도록 */
   background: #1f1f23;
   color: #d8d9da;
-  scrollbar-width: thin;
-  scrollbar-color: #464c56 transparent;
+  min-height: 0; /* flex 아이템이 축소될 수 있도록 */
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-content::-webkit-scrollbar {

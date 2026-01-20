@@ -22,3 +22,8 @@
   border-radius: 4px;
   border: 1px dashed rgba(88, 166, 255, 0.2);
 }
+
+.chart-mini {
+  padding: 0;
+  min-height: 0;
+}

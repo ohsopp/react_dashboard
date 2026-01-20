@@ -24,17 +24,17 @@ const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true }) =>
       </div>
       <div className="panel-header-right">
         {showCsv && (
-          <button 
-            className="panel-csv-button"
-            onClick={handleCsvClick}
-            title="CSV 다운로드"
-          >
-            <span className="csv-text">CSV</span>
-            <svg className="csv-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8 10L4 6H6V2H10V6H12L8 10Z" fill="currentColor"/>
-              <path d="M2 12V14H14V12H2Z" fill="currentColor"/>
-            </svg>
-          </button>
+        <button 
+          className="panel-csv-button"
+          onClick={handleCsvClick}
+          title="CSV 다운로드"
+        >
+          <span className="csv-text">CSV</span>
+          <svg className="csv-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8 10L4 6H6V2H10V6H12L8 10Z" fill="currentColor"/>
+            <path d="M2 12V14H14V12H2Z" fill="currentColor"/>
+          </svg>
+        </button>
         )}
         {onHide && (
           <button 

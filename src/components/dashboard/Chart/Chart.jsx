@@ -4,6 +4,77 @@ import './Chart.css';
 
 // Chart 컴포넌트
 const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange, value }) => {
+  // 미니 그래프 (통계 패널 배경용)
+  if (type === 'mini') {
+    // 데이터 검증
+    if (!data || !data.values || !data.values.length) {
+      return null;
+    }
+    
+    const miniData = data.values || [];
+    const miniOptions = {
+      backgroundColor: 'transparent',
+      grid: {
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        containLabel: false
+      },
+      xAxis: {
+        type: 'category',
+        data: miniData.map((_, i) => i),
+        show: false,
+        boundaryGap: false
+      },
+      yAxis: {
+        type: 'value',
+        show: false,
+        min: 0,
+        max: 50
+      },
+      series: {
+        type: 'line',
+        data: miniData,
+        smooth: true,
+        symbol: 'none',
+        lineStyle: {
+          color: '#58a6ff',
+          width: 1.5
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(88, 166, 255, 0.3)' },
+              { offset: 1, color: 'rgba(88, 166, 255, 0.05)' }
+            ]
+          }
+        }
+      },
+      tooltip: {
+        show: false
+      },
+      ...options
+    };
+    
+    return (
+      <div className={`chart chart-mini ${className}`}>
+        <ReactECharts
+          option={miniOptions}
+          style={{ width: '100%', height: '100%' }}
+          opts={{ renderer: 'svg' }}
+          notMerge={false}
+          lazyUpdate={true}
+        />
+      </div>
+    );
+  }
+  
   // AQI 스타일 차트인 경우 별도 처리 (데이터 검증 전에 처리)
   if (type === 'aqi') {
     // 데이터 검증
@@ -318,7 +389,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         smooth: true,
         symbol: 'none',
         lineStyle: {
-          width: 2
+          width: 1
         },
         areaStyle: {
           opacity: 0.3

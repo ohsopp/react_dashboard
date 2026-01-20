@@ -153,9 +153,27 @@ function App() {
     const dataPoints = temperatureHistory.values ? temperatureHistory.values.length : 0
     
     return [
-      { id: 'stat-panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">{avgTemperature}</div></div> },
-      { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-label">Total</div><div className="stat-value">{dataPoints.toLocaleString()}</div></div> },
+      { id: 'stat-panel6', title: 'Temperature Statistics', content: (
+        <div className="stat-panel stat-panel-with-chart">
+          <div className="stat-panel-chart-bg">
+            {temperatureHistory.values && temperatureHistory.values.length > 0 ? (
+              <Chart
+                type="mini"
+                data={{
+                  values: temperatureHistory.values,
+                  timestamps: temperatureHistory.timestamps
+                }}
+                options={{}}
+              />
+            ) : null}
+          </div>
+          <div className="stat-panel-content">
+            <div className="stat-value">{avgTemperature}</div>
+          </div>
+        </div>
+      ) },
+      { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-value">--</div></div> },
+      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value">{dataPoints.toLocaleString()}</div></div> },
       { id: 'stat-panel9', title: 'Network IP', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Server IP</span><span className="ip-address">{ipInfo.currentIp}</span></div><div className="ip-row"><span className="ip-label">IO-Link IP</span><span className="ip-address">{ipInfo.iolinkIp}</span></div></div> }
     ]
   }, [temperature, temperatureHistory, ipInfo])

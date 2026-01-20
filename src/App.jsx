@@ -114,6 +114,36 @@ function App() {
             options={{}}
           />
         )
+      },
+      {
+        id: 'panel6',
+        title: 'Temperature (AQI Style)',
+        content: temperatureHistory.timestamps.length > 0 ? (
+          <Chart
+            type="aqi"
+            data={{
+              title: 'Temperature',
+              name: 'Temperature',
+              labels: temperatureHistory.timestamps.map(ts => {
+                const date = new Date(ts)
+                if (selectedRange === '7d') {
+                  return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
+                         date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                } else {
+                  return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                }
+              }),
+              timestamps: temperatureHistory.timestamps,
+              values: temperatureHistory.values.map(val => val !== null && val !== undefined ? val : null)
+            }}
+            timeRange={selectedRange}
+            options={{}}
+          />
+        ) : (
+          <div className="chart-placeholder">
+            데이터를 불러오는 중...
+          </div>
+        )
       }
       ]
     }, [temperature, temperatureHistory, selectedRange, dataZoomRange])
@@ -136,7 +166,7 @@ function App() {
     return [
       { id: 'stat-panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">{avgTemperature}</div></div> },
       { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">{dataPoints.toLocaleString()}</div></div> },
+      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-label">Total</div><div className="stat-value">{dataPoints.toLocaleString()}</div></div> },
       { id: 'stat-panel9', title: 'Network IP', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Server IP</span><span className="ip-address">{ipInfo.currentIp}</span></div><div className="ip-row"><span className="ip-label">IO-Link IP</span><span className="ip-address">{ipInfo.iolinkIp}</span></div></div> }
     ]
   }, [temperature, temperatureHistory, ipInfo])
@@ -146,7 +176,8 @@ function App() {
     panel2: 6,  // 2/4
     panel3: 6,  // 2/4
     panel4: 6,  // 2/4
-    panel5: 6   // 2/4
+    panel5: 6,  // 2/4
+    panel6: 12  // 전체
   })
   
   // 통계 패널 전용 사이즈/순서/숨김 관리 (4개를 한 줄에 배치: 12/4 = 3)
@@ -168,21 +199,22 @@ function App() {
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4]
+    return [0, 1, 2, 3, 4, 5]
   })
   
   const [statPanelOrder, setStatPanelOrder] = useState(() => {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4])
+  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
     panel3: 6,
     panel4: 6,
-    panel5: 6
+    panel5: 6,
+    panel6: 12
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
@@ -229,7 +261,7 @@ function App() {
     const requestRange = targetRange
     
     try {
-      const response = await fetch(`http://localhost:5005/api/influxdb/temperature?range=${requestRange}`, {
+      const response = await fetch(`/api/influxdb/temperature?range=${requestRange}`, {
         signal: abortController.signal
       })
       
@@ -307,7 +339,7 @@ function App() {
   useEffect(() => {
     const fetchIpInfo = async () => {
       try {
-        const response = await fetch('http://localhost:5005/api/system/ip')
+        const response = await fetch('/api/system/ip')
         if (response.ok) {
           const data = await response.json()
           setIpInfo({

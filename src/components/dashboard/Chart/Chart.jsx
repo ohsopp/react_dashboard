@@ -4,6 +4,345 @@ import './Chart.css';
 
 // Chart 컴포넌트
 const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange, value }) => {
+  // AQI 스타일 차트인 경우 별도 처리 (데이터 검증 전에 처리)
+  if (type === 'aqi') {
+    // 데이터 검증
+    if (!data || !data.values || !data.labels || data.values.length === 0) {
+      return (
+        <div className={`chart chart-${type} ${className}`}>
+          <div className="chart-placeholder">
+            데이터를 불러오는 중...
+          </div>
+        </div>
+      );
+    }
+    
+    // AQI 데이터 구조: data.labels (날짜 배열), data.values (AQI 값 배열), data.timestamps (타임스탬프 배열)
+    const aqiData = data.values || [];
+    const aqiLabels = data.labels || [];
+    const aqiTimestamps = data.timestamps || [];
+    
+    // 시간 범위에 따라 적절한 틱 간격 계산 (온도 그래프와 동일한 로직)
+    const calculateAqiTickInterval = (() => {
+      if (!aqiTimestamps || aqiTimestamps.length === 0) {
+        return { intervalMinutes: 10, tickIndices: new Set() };
+      }
+      
+      const startTime = aqiTimestamps[0];
+      const endTime = aqiTimestamps[aqiTimestamps.length - 1];
+      const timeRangeMs = endTime - startTime;
+      const hours = timeRangeMs / (1000 * 60 * 60);
+      
+      // 전체 시간 범위를 8개 이하로 나누는 적절한 간격 계산
+      const targetTicks = 7;
+      const targetIntervalMs = timeRangeMs / targetTicks;
+      
+      // 깔끔한 시간 단위로 반올림
+      let intervalMs;
+      if (targetIntervalMs <= 5 * 60 * 1000) {
+        intervalMs = 5 * 60 * 1000;
+      } else if (targetIntervalMs <= 10 * 60 * 1000) {
+        intervalMs = 10 * 60 * 1000;
+      } else if (targetIntervalMs <= 30 * 60 * 1000) {
+        intervalMs = 30 * 60 * 1000;
+      } else if (targetIntervalMs <= 60 * 60 * 1000) {
+        intervalMs = 60 * 60 * 1000;
+      } else if (targetIntervalMs <= 2 * 60 * 60 * 1000) {
+        intervalMs = 2 * 60 * 60 * 1000;
+      } else if (targetIntervalMs <= 4 * 60 * 60 * 1000) {
+        intervalMs = 4 * 60 * 60 * 1000;
+      } else if (targetIntervalMs <= 6 * 60 * 60 * 1000) {
+        intervalMs = 6 * 60 * 60 * 1000;
+      } else if (targetIntervalMs <= 12 * 60 * 60 * 1000) {
+        intervalMs = 12 * 60 * 60 * 1000;
+      } else if (targetIntervalMs <= 24 * 60 * 60 * 1000) {
+        intervalMs = 24 * 60 * 60 * 1000;
+      } else {
+        intervalMs = 24 * 60 * 60 * 1000;
+      }
+      
+      // 틱 시간 목록 생성
+      const tickTimes = [];
+      let currentTime = Math.ceil(startTime / intervalMs) * intervalMs;
+      
+      while (currentTime <= endTime && tickTimes.length < 8) {
+        tickTimes.push(currentTime);
+        currentTime += intervalMs;
+      }
+      
+      if (tickTimes.length < 8 && endTime > tickTimes[tickTimes.length - 1] + intervalMs / 2) {
+        tickTimes.push(endTime);
+      }
+      
+      // 각 틱 시간에 가장 가까운 데이터 포인트 찾기 (같은 분 내 여러 데이터가 있으면 처음 들어온 데이터 선택)
+      const tickIndices = new Set();
+      
+      for (const tickTime of tickTimes) {
+        const candidates = [];
+        for (let i = 0; i < aqiTimestamps.length; i++) {
+          const diff = Math.abs(aqiTimestamps[i] - tickTime);
+          if (diff <= intervalMs / 2) {
+            candidates.push({ index: i, diff: diff, timestamp: aqiTimestamps[i] });
+          }
+        }
+        
+        if (candidates.length > 0) {
+          const tickDate = new Date(tickTime);
+          const tickMinute = tickDate.getMinutes();
+          const tickHour = tickDate.getHours();
+          
+          const sameMinuteCandidates = candidates.filter(c => {
+            const candidateDate = new Date(c.timestamp);
+            return candidateDate.getMinutes() === tickMinute && candidateDate.getHours() === tickHour;
+          });
+          
+          if (sameMinuteCandidates.length > 0) {
+            sameMinuteCandidates.sort((a, b) => a.index - b.index);
+            const selectedIndex = sameMinuteCandidates[0].index;
+            if (selectedIndex < aqiLabels.length) {
+              tickIndices.add(selectedIndex);
+            }
+          } else {
+            candidates.sort((a, b) => a.diff - b.diff);
+            const selectedIndex = candidates[0].index;
+            if (selectedIndex < aqiLabels.length) {
+              tickIndices.add(selectedIndex);
+            }
+          }
+        }
+      }
+      
+      return { intervalMinutes: intervalMs / (60 * 1000), tickIndices };
+    })();
+    
+    const aqiOptions = {
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13, 17, 23, 0.9)',
+        borderColor: '#30363d',
+        borderWidth: 1,
+        textStyle: {
+          color: '#c9d1d9',
+          fontSize: 12
+        }
+      },
+      grid: {
+        left: '5%',
+        right: '3%',
+        bottom: '10%',
+        top: '15%'
+      },
+      xAxis: {
+        type: 'category',
+        data: aqiLabels,
+        boundaryGap: false,
+        axisLine: {
+          show: true,
+          lineStyle: {
+            color: '#30363d',
+            width: 1
+          }
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          color: '#7d8590',
+          fontSize: 10,
+          rotate: 0,
+          interval: 0,
+          showMinLabel: false,
+          showMaxLabel: false,
+          formatter: function(value, index) {
+            // 틱 위치에만 레이블 표시
+            if (!calculateAqiTickInterval.tickIndices.has(index)) {
+              return '';
+            }
+            
+            // timestamps가 없으면 원본 값 반환
+            if (!aqiTimestamps || index >= aqiTimestamps.length) {
+              return value;
+            }
+            
+            const timestamp = aqiTimestamps[index];
+            const date = new Date(timestamp);
+            
+            // 시간 범위에 따라 포맷 결정
+            const hours = (aqiTimestamps[aqiTimestamps.length - 1] - aqiTimestamps[0]) / (1000 * 60 * 60);
+            
+            if (hours > 24) {
+              // 24시간 초과: 날짜 + 시간
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hour = String(date.getHours()).padStart(2, '0');
+              const minute = String(date.getMinutes()).padStart(2, '0');
+              return `${month}/${day} ${hour}:${minute}`;
+            } else {
+              // 그 외: 시간만
+              const hour = String(date.getHours()).padStart(2, '0');
+              const minute = String(date.getMinutes()).padStart(2, '0');
+              return `${hour}:${minute}`;
+            }
+          }
+        }
+      },
+      yAxis: {
+        type: 'value',
+        name: 'Temperature (°C)',
+        nameTextStyle: {
+          color: '#7d8590',
+          fontSize: 10
+        },
+        min: 0,
+        max: 50,
+        axisLine: {
+          lineStyle: {
+            color: '#30363d'
+          }
+        },
+        axisLabel: {
+          color: '#7d8590',
+          fontSize: 10,
+          formatter: '{value}°C'
+        },
+        splitLine: {
+          lineStyle: {
+            color: 'rgba(214, 223, 233, 0.2)'
+          }
+        }
+      },
+      visualMap: {
+        top: 50,
+        right: 10,
+        pieces: [
+          {
+            gt: -Infinity,
+            lte: 15,
+            color: '#93CE07'  // 0-15도: 녹색 (낮은 온도)
+          },
+          {
+            gt: 15,
+            lte: 25,
+            color: '#58a6ff'  // 15-25도: 파란색 (적정 온도)
+          },
+          {
+            gt: 25,
+            lte: 35,
+            color: '#FBDB0F'  // 25-35도: 노란색 (주의)
+          },
+          {
+            gt: 35,
+            lte: 40,
+            color: '#FC7D02'  // 35-40도: 주황색 (경고)
+          },
+          {
+            gt: 40,
+            lte: 50,
+            color: '#FD0100'  // 40-50도: 빨간색 (위험)
+          },
+          {
+            gt: 50,
+            color: '#AC3B2A'  // 50도 이상: 진한 빨강
+          }
+        ],
+        outOfRange: {
+          color: '#999'
+        },
+        show: false
+      },
+      series: {
+        name: data.name || 'AQI',
+        type: 'line',
+        data: aqiData,
+        markLine: {
+          silent: true,
+          lineStyle: {
+            color: 'rgba(214, 223, 233, 0.3)',
+            width: 1,
+            type: 'dashed'
+          },
+          data: [
+            {
+              yAxis: 15,
+              label: {
+                show: true,
+                position: 'end',
+                formatter: '15°C',
+                color: '#7d8590',
+                fontSize: 10
+              }
+            },
+            {
+              yAxis: 25,
+              label: {
+                show: true,
+                position: 'end',
+                formatter: '25°C',
+                color: '#7d8590',
+                fontSize: 10
+              }
+            },
+            {
+              yAxis: 35,
+              label: {
+                show: true,
+                position: 'end',
+                formatter: '35°C',
+                color: '#7d8590',
+                fontSize: 10
+              }
+            },
+            {
+              yAxis: 40,
+              label: {
+                show: true,
+                position: 'end',
+                formatter: '40°C',
+                color: '#7d8590',
+                fontSize: 10
+              }
+            },
+            {
+              yAxis: 50,
+              label: {
+                show: true,
+                position: 'end',
+                formatter: '50°C',
+                color: '#7d8590',
+                fontSize: 10
+              }
+            }
+          ]
+        },
+        smooth: true,
+        symbol: 'none',
+        lineStyle: {
+          width: 2
+        },
+        areaStyle: {
+          opacity: 0.3
+        }
+      },
+      ...options
+    };
+
+    const chartRef = useRef(null);
+
+    return (
+      <div className={`chart chart-${type} ${className}`}>
+        <ReactECharts
+          ref={chartRef}
+          option={aqiOptions}
+          style={{ width: '100%', height: '100%', minHeight: '300px' }}
+          opts={{ renderer: 'svg' }}
+          notMerge={false}
+          lazyUpdate={true}
+        />
+      </div>
+    );
+  }
+
   // 게이지 차트인 경우 별도 처리
   if (type === 'gauge') {
     const gaugeValue = value !== undefined && value !== null ? value : 0;

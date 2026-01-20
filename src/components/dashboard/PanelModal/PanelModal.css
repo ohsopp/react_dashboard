@@ -25,7 +25,7 @@
 }
 
 .panel-modal {
-  background: #0d1117;
+  background: #1f1f23;
   border: 1px solid #21262d;
   border-radius: 6px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -50,7 +50,7 @@
 }
 
 .panel-modal-header-wrapper {
-  background: #161b22;
+  background: #1f1f23;
   padding: 0;
   display: flex;
   justify-content: space-between;
@@ -94,7 +94,7 @@
   padding: 24px;
   overflow-y: auto;
   flex: 1;
-  background: #161b22;
+  background: #1f1f23;
   color: #ffffff;
   scrollbar-width: thin;
   scrollbar-color: #30363d transparent;

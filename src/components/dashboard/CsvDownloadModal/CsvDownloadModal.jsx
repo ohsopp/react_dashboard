@@ -132,7 +132,7 @@ const CsvDownloadModal = ({ isOpen, onClose, panelId }) => {
       
       // 백엔드 API 호출 (KST 시간 문자열로 전송)
       const response = await fetch(
-        `http://localhost:5005/api/export/temperature/csv?start_time_kst=${encodeURIComponent(startTimeKST)}&end_time_kst=${encodeURIComponent(endTimeKST)}`
+        `/api/export/temperature/csv?start_time_kst=${encodeURIComponent(startTimeKST)}&end_time_kst=${encodeURIComponent(endTimeKST)}`
       )
 
       if (!response.ok) {

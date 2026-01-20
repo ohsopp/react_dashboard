@@ -31,6 +31,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
   }, [size])
 
   const handlePanelClick = (e) => {
+    // 카드 패널(통계 패널)은 클릭해도 모달을 열지 않음
+    if (id && id.startsWith('stat-panel')) {
+      return
+    }
+    
     // 리사이즈 중이거나 방금 리사이즈가 끝났거나 드래그 중이거나 리사이즈 핸들 클릭 시 모달 열기 방지
     // 차트 컨테이너나 슬라이더 영역 클릭 시에도 모달 열기 방지
     if (isResizing || justFinishedResizing.current || isDragging || 

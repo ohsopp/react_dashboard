@@ -128,8 +128,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         }
       },
       grid: {
-        left: '5%',
-        right: '3%',
+        left: '3%',
+        right: '2%',
         bottom: '10%',
         top: '15%'
       },

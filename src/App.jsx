@@ -95,17 +95,6 @@ function App() {
         )
       },
       { 
-        id: 'panel3', 
-        title: 'Temperature Gauge', 
-        content: (
-          <Chart 
-            type="gauge" 
-            value={temperature}
-            options={{}}
-          />
-        )
-      },
-      { 
         id: 'panel5', 
         title: 'Bar Animation', 
         content: (
@@ -174,7 +163,6 @@ function App() {
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
     panel2: 6,  // 2/4
-    panel3: 6,  // 2/4
     panel4: 6,  // 2/4
     panel5: 6,  // 2/4
     panel6: 12  // 전체
@@ -199,19 +187,18 @@ function App() {
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4, 5]
+    return [0, 1, 2, 3, 4]
   })
   
   const [statPanelOrder, setStatPanelOrder] = useState(() => {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
+  const panelOrderRef = useRef([0, 1, 2, 3, 4])
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
-    panel3: 6,
     panel4: 6,
     panel5: 6,
     panel6: 12

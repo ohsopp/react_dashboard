@@ -6,9 +6,9 @@ import Chart from './components/dashboard/Chart/Chart'
 
 // 일반 패널 그래프 grid 설정 (유지보수 편의를 위해 상수로 분리)
 const DEFAULT_PANEL_GRID = {
-  left: '35px',
-  right: '35px',
-  bottom: '10%',
+  left: '25px',
+  right: '25px',
+  bottom: '10px',
   top: '10%'
 }
 
@@ -305,13 +305,34 @@ function App() {
     ]
   }, [temperature, temperatureHistory, vibrationHistory, ipInfo])
 
-  const [panelSizes, setPanelSizes] = useState({
-    panel1: 12, // 전체
-    panel2: 6,  // 2/4
-    panel4: 6,  // 2/4
-    panel5: 6,  // 2/4
-    panel6: 12, // 전체
-    panel7: 12  // 전체
+  // 기본 레이아웃: panel1, panel6, panel7 (3등분), panel2, panel5 (2등분)
+  const DEFAULT_PANEL_SIZES = {
+    panel1: 4,  // 3등분 (12/3 = 4)
+    panel2: 6,  // 2등분 (12/2 = 6)
+    panel5: 6,  // 2등분 (12/2 = 6)
+    panel6: 4,  // 3등분 (12/3 = 4)
+    panel7: 4   // 3등분 (12/3 = 4)
+  }
+  
+  const [panelSizes, setPanelSizes] = useState(() => {
+    // localStorage에서 저장된 레이아웃 불러오기
+    try {
+      const saved = localStorage.getItem('dashboard-layout')
+      if (saved) {
+        const layout = JSON.parse(saved)
+        if (layout.panels) {
+          const sizes = {}
+          Object.keys(layout.panels).forEach(panelId => {
+            sizes[panelId] = layout.panels[panelId].width
+          })
+          // 기본값과 병합 (없는 패널은 기본값 사용)
+          return { ...DEFAULT_PANEL_SIZES, ...sizes }
+        }
+      }
+    } catch (e) {
+      console.error('레이아웃 로드 실패:', e)
+    }
+    return DEFAULT_PANEL_SIZES
   })
   
   // 통계 패널 전용 사이즈/순서/숨김 관리 (4개를 한 줄에 배치: 12/4 = 3)
@@ -331,24 +352,56 @@ function App() {
   const containerRef = useRef(null)
   const statContainerRef = useRef(null)
   
+  // 기본 패널 순서: panel1 (Temperature History), panel6 (AQI), panel7 (Vibration), panel2 (Pie), panel5 (Bar)
+  // panelConfigs 배열: [panel1(0), panel2(1), panel5(2), panel6(3), panel7(4)]
+  const DEFAULT_PANEL_ORDER = [0, 3, 4, 1, 2] // panel1=0, panel6=3, panel7=4, panel2=1, panel5=2
+  
   const [panelOrder, setPanelOrder] = useState(() => {
-    // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4, 5]
+    // localStorage에서 저장된 순서 불러오기
+    try {
+      const saved = localStorage.getItem('dashboard-layout')
+      if (saved) {
+        const layout = JSON.parse(saved)
+        if (layout.order && layout.order['dashboard-container']) {
+          // 저장된 패널 ID를 인덱스로 변환
+          const savedOrder = layout.order['dashboard-container']
+          const orderMap = {
+            'panel1': 0,
+            'panel2': 1,
+            'panel5': 2,
+            'panel6': 3,
+            'panel7': 4
+          }
+          const convertedOrder = savedOrder
+            .map(id => orderMap[id])
+            .filter(index => index !== undefined)
+          
+          // 기본 순서와 병합 (없는 패널은 기본 순서 사용)
+          if (convertedOrder.length > 0) {
+            const allPanels = [0, 1, 2, 3, 4] // 모든 패널 인덱스
+            const missing = allPanels.filter(idx => !convertedOrder.includes(idx))
+            return [...convertedOrder, ...missing]
+          }
+        }
+      }
+    } catch (e) {
+      console.error('패널 순서 로드 실패:', e)
+    }
+    return DEFAULT_PANEL_ORDER
   })
   
   const [statPanelOrder, setStatPanelOrder] = useState(() => {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
+  const panelOrderRef = useRef([0, 3, 4, 1, 2]) // 기본 순서: panel1, panel6, panel7, panel2, panel5
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
-    panel1: 12,
+    panel1: 4,
     panel2: 6,
-    panel4: 6,
     panel5: 6,
-    panel6: 12,
-    panel7: 12
+    panel6: 4,
+    panel7: 4
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
@@ -357,20 +410,15 @@ function App() {
     'stat-panel9': 3
   })
   
-  // panelConfigs의 길이가 변경되면 panelOrderRef 업데이트 (무한 루프 방지)
-  // panelConfigs는 매번 새로운 참조이므로 길이만 확인
-  const panelConfigsLength = panelConfigs.length
+  // panelOrder가 변경될 때 panelOrderRef 업데이트
   useEffect(() => {
-    const newOrder = panelConfigs.map((_, index) => index)
-    // 길이가 변경되었을 때만 state 업데이트
-    if (panelOrder.length !== newOrder.length) {
-      panelOrderRef.current = newOrder
-      setPanelOrder(newOrder)
-    } else {
-      // 길이가 같으면 ref만 업데이트 (state 업데이트 없음으로 무한 루프 방지)
-      panelOrderRef.current = newOrder
-    }
-  }, [panelConfigsLength]) // 길이만 의존성으로 사용하여 무한 루프 방지
+    panelOrderRef.current = panelOrder
+  }, [panelOrder])
+  
+  // panelSizes가 변경될 때 panelSizesRef 업데이트
+  useEffect(() => {
+    panelSizesRef.current = panelSizes
+  }, [panelSizes])
   
   // selectedRange가 변경될 때마다 ref 업데이트
   useEffect(() => {

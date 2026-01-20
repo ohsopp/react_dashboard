@@ -546,7 +546,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         <ReactECharts
           ref={aqiChartRef}
           option={aqiOptions}
-          style={{ width: '100%', height: '100%', minHeight: '300px' }}
+          style={{ width: '100%', height: '100%', minHeight: '150px' }}
           opts={{ renderer: 'svg' }}
           notMerge={false}
           lazyUpdate={true}
@@ -670,7 +670,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         <ReactECharts
           ref={gaugeChartRef}
           option={gaugeOptions}
-          style={{ width: '100%', height: '100%', minHeight: '200px' }}
+          style={{ width: '100%', height: '100%', minHeight: '150px' }}
           opts={{ renderer: 'svg' }}
           notMerge={true}
           lazyUpdate={true}
@@ -852,7 +852,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         <ReactECharts
           ref={barChartRef}
           option={barOptions}
-          style={{ width: '100%', height: '100%', minHeight: '200px' }}
+          style={{ width: '100%', height: '100%', minHeight: '150px' }}
           opts={{ renderer: 'svg' }}
           notMerge={false}
           lazyUpdate={false}
@@ -955,7 +955,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         <ReactECharts
           ref={pieChartRef}
           option={pieOptions}
-          style={{ width: '100%', height: '100%', minHeight: '200px' }}
+          style={{ width: '100%', height: '100%', minHeight: '150px' }}
           opts={{ renderer: 'svg' }}
           notMerge={true}
           lazyUpdate={true}
@@ -1544,7 +1544,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       <ReactECharts
         ref={chartRef}
         option={echartsOption}
-        style={{ width: '100%', height: '100%', minHeight: '300px' }}
+        style={{ width: '100%', height: '100%', minHeight: '150px' }}
         opts={{ renderer: 'svg' }}
         notMerge={true}
         lazyUpdate={true}

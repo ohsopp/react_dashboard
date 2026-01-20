@@ -31,6 +31,7 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   width: calc(100vw - 120px);
   max-width: calc(100vw - 120px);
+  height: 80vh;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -60,6 +61,16 @@
 
 .panel-modal-header-wrapper .panel-header {
   flex: 1;
+}
+
+/* 모달 내부 패널 헤더 폰트 크기 증가 */
+.panel-modal-header-wrapper .panel-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.panel-modal-header-wrapper .panel-subtitle {
+  font-size: 14px;
 }
 
 .panel-modal-close {
@@ -94,10 +105,14 @@
   padding: 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  height: 100%;
   background: #1f1f23;
   color: #ffffff;
   scrollbar-width: thin;
   scrollbar-color: #30363d transparent;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-modal-content::-webkit-scrollbar {

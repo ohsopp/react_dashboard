@@ -12,6 +12,21 @@
   overflow: hidden;
 }
 
+/* 모달 내부 차트는 높이를 더 크게 */
+.panel-modal-content .chart {
+  min-height: 400px;
+  height: 100%;
+  flex: 1;
+}
+
+/* 모달 내부 차트 컨테이너도 높이를 차지하도록 */
+.panel-modal-content > div {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .chart-placeholder {
   width: 100%;
   height: 100%;

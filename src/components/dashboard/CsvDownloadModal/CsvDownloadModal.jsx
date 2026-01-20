@@ -130,10 +130,14 @@ const CsvDownloadModal = ({ isOpen, onClose, panelId }) => {
         endTimeKST
       })
       
+      // panelId에 따라 적절한 API 엔드포인트 선택
+      const isVibrationPanel = panelId === 'panel7'
+      const apiEndpoint = isVibrationPanel 
+        ? `/api/export/vibration/csv?start_time_kst=${encodeURIComponent(startTimeKST)}&end_time_kst=${encodeURIComponent(endTimeKST)}`
+        : `/api/export/temperature/csv?start_time_kst=${encodeURIComponent(startTimeKST)}&end_time_kst=${encodeURIComponent(endTimeKST)}`
+      
       // 백엔드 API 호출 (KST 시간 문자열로 전송)
-      const response = await fetch(
-        `/api/export/temperature/csv?start_time_kst=${encodeURIComponent(startTimeKST)}&end_time_kst=${encodeURIComponent(endTimeKST)}`
-      )
+      const response = await fetch(apiEndpoint)
 
       if (!response.ok) {
         throw new Error('CSV 다운로드 실패')
@@ -144,7 +148,8 @@ const CsvDownloadModal = ({ isOpen, onClose, panelId }) => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `temperature_${startDate}_${startTime.replace(':', '')}_to_${endDate}_${endTime.replace(':', '')}.csv`
+      const filenamePrefix = isVibrationPanel ? 'vibration' : 'temperature'
+      a.download = `${filenamePrefix}_${startDate}_${startTime.replace(':', '')}_to_${endDate}_${endTime.replace(':', '')}.csv`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)

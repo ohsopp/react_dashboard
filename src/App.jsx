@@ -8,6 +8,7 @@ function App() {
   const [selectedRange, setSelectedRange] = useState('1h')
   const [temperature, setTemperature] = useState(null)
   const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
+  const [vibrationHistory, setVibrationHistory] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
   const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
   const [ipInfo, setIpInfo] = useState({ currentIp: '--', iolinkIp: '--' })
   const eventSourceRef = useRef(null)
@@ -126,7 +127,60 @@ function App() {
               values: temperatureHistory.values.map(val => val !== null && val !== undefined ? val : null)
             }}
             timeRange={selectedRange}
-            options={{}}
+            options={{
+              animation: false,
+              sampling: 'lttb'
+            }}
+          />
+        ) : (
+          <div className="chart-placeholder">
+            데이터를 불러오는 중...
+          </div>
+        )
+      },
+      {
+        id: 'panel7',
+        title: 'Vibration Sensor',
+        content: vibrationHistory.timestamps.length > 0 ? (
+          <Chart
+            key={`vibration-chart-${selectedRange}`}
+            type="line"
+            data={{
+              labels: vibrationHistory.timestamps.map(ts => {
+                const date = new Date(ts)
+                if (selectedRange === '7d') {
+                  return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
+                         date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                } else {
+                  return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                }
+              }),
+              timestamps: vibrationHistory.timestamps,
+              datasets: [
+                {
+                  label: 'v-RMS (mm/s)',
+                  data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined ? val : null)
+                },
+                {
+                  label: 'a-Peak (m/s²)',
+                  data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined ? val : null)
+                },
+                {
+                  label: 'a-RMS (m/s²)',
+                  data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined ? val : null)
+                },
+                {
+                  label: 'Crest',
+                  data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined ? val : null)
+                }
+              ]
+            }}
+            timeRange={selectedRange}
+            options={{
+              animation: false,
+              sampling: 'lttb',
+              dataZoom: [] // 진동센서 그래프는 줌 기능 비활성화
+            }}
           />
         ) : (
           <div className="chart-placeholder">
@@ -135,7 +189,7 @@ function App() {
         )
       }
       ]
-    }, [temperature, temperatureHistory, selectedRange, dataZoomRange])
+    }, [temperature, temperatureHistory, vibrationHistory, selectedRange, dataZoomRange])
 
   // 통계 패널 설정 (별도 관리)
   const statPanelConfigs = useMemo(() => {
@@ -151,6 +205,16 @@ function App() {
     
     // 데이터 포인트 개수
     const dataPoints = temperatureHistory.values ? temperatureHistory.values.length : 0
+    
+    // 진동센서 평균 계산 (v-RMS 사용)
+    let avgVibration = '--'
+    if (vibrationHistory.v_rms && vibrationHistory.v_rms.length > 0) {
+      const validValues = vibrationHistory.v_rms.filter(v => v !== null && v !== undefined && !isNaN(v))
+      if (validValues.length > 0) {
+        const sum = validValues.reduce((acc, val) => acc + val, 0)
+        avgVibration = (sum / validValues.length).toFixed(4) + ' mm/s'
+      }
+    }
     
     return [
       { id: 'stat-panel6', title: 'Temperature Statistics', content: (
@@ -172,18 +236,70 @@ function App() {
           </div>
         </div>
       ) },
-      { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-value">--</div></div> },
+      { id: 'stat-panel7', title: 'Vibration Statistics', content: (
+        <div className="stat-panel stat-panel-with-chart">
+          <div className="stat-panel-chart-bg">
+            {vibrationHistory.v_rms && vibrationHistory.v_rms.length > 0 && (
+              vibrationHistory.v_rms.some(v => v !== null && v !== undefined && !isNaN(v)) ||
+              vibrationHistory.a_peak?.some(v => v !== null && v !== undefined && !isNaN(v)) ||
+              vibrationHistory.a_rms?.some(v => v !== null && v !== undefined && !isNaN(v)) ||
+              vibrationHistory.crest?.some(v => v !== null && v !== undefined && !isNaN(v))
+            ) ? (
+              <Chart
+                type="mini"
+                data={{
+                  datasets: [
+                    {
+                      label: 'v-RMS',
+                      data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
+                    },
+                    {
+                      label: 'a-Peak',
+                      data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
+                    },
+                    {
+                      label: 'a-RMS',
+                      data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
+                    },
+                    {
+                      label: 'Crest',
+                      data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
+                    }
+                  ],
+                  timestamps: vibrationHistory.timestamps
+                }}
+                options={{
+                  yAxis: {
+                    min: undefined,
+                    max: undefined,
+                    splitLine: {
+                      show: false
+                    },
+                    axisLabel: {
+                      show: false
+                    }
+                  }
+                }}
+              />
+            ) : null}
+          </div>
+          <div className="stat-panel-content">
+            <div className="stat-value">{avgVibration}</div>
+          </div>
+        </div>
+      ) },
       { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value">{dataPoints.toLocaleString()}</div></div> },
       { id: 'stat-panel9', title: 'Network IP', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Server IP</span><span className="ip-address">{ipInfo.currentIp}</span></div><div className="ip-row"><span className="ip-label">IO-Link IP</span><span className="ip-address">{ipInfo.iolinkIp}</span></div></div> }
     ]
-  }, [temperature, temperatureHistory, ipInfo])
+  }, [temperature, temperatureHistory, vibrationHistory, ipInfo])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
     panel2: 6,  // 2/4
     panel4: 6,  // 2/4
     panel5: 6,  // 2/4
-    panel6: 12  // 전체
+    panel6: 12, // 전체
+    panel7: 12  // 전체
   })
   
   // 통계 패널 전용 사이즈/순서/숨김 관리 (4개를 한 줄에 배치: 12/4 = 3)
@@ -205,21 +321,22 @@ function App() {
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // 초기 패널 개수로 초기화 (나중에 panelConfigs로 업데이트됨)
-    return [0, 1, 2, 3, 4]
+    return [0, 1, 2, 3, 4, 5]
   })
   
   const [statPanelOrder, setStatPanelOrder] = useState(() => {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 1, 2, 3, 4])
+  const panelOrderRef = useRef([0, 1, 2, 3, 4, 5])
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
     panel4: 6,
     panel5: 6,
-    panel6: 12
+    panel6: 12,
+    panel7: 12
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
@@ -339,6 +456,48 @@ function App() {
       }
     }
   }, [selectedRange]) // fetchTemperatureHistory는 ref를 사용하므로 의존성에서 제거 (클로저 문제 해결)
+
+  // 진동센서 히스토리 데이터 가져오기
+  const fetchVibrationHistory = useCallback(async (range) => {
+    const targetRange = range || selectedRangeRef.current
+    
+    try {
+      const response = await fetch(`/api/influxdb/vibration?range=${targetRange}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.timestamps && data.timestamps.length > 0) {
+          setVibrationHistory({
+            timestamps: data.timestamps || [],
+            v_rms: data.v_rms || [],
+            a_peak: data.a_peak || [],
+            a_rms: data.a_rms || [],
+            crest: data.crest || []
+          })
+        } else {
+          // 데이터가 없으면 빈 배열로 초기화
+          setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
+        }
+      }
+    } catch (error) {
+      console.error('진동센서 히스토리 데이터 가져오기 실패:', error)
+    }
+  }, [])
+
+  // selectedRange가 변경되면 진동센서 데이터도 로드
+  useEffect(() => {
+    // 이전 데이터 완전히 초기화
+    setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
+    
+    // 현재 selectedRange로 데이터 로드
+    fetchVibrationHistory(selectedRangeRef.current)
+    
+    // 5초마다 데이터 업데이트 (실시간)
+    const interval = setInterval(() => {
+      fetchVibrationHistory(selectedRangeRef.current)
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [selectedRange, fetchVibrationHistory])
 
   // IP 정보 가져오기
   useEffect(() => {

@@ -53,8 +53,26 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   };
   // 미니 그래프 (통계 패널 배경용)
   if (type === 'mini') {
-    // 데이터 검증
-    if (!data || !data.values || !data.values.length) {
+    // 데이터 검증 - datasets 또는 values 지원
+    const hasDatasets = data?.datasets && Array.isArray(data.datasets) && data.datasets.length > 0;
+    const hasValues = data?.values && Array.isArray(data.values) && data.values.length > 0;
+    
+    if (!data || (!hasDatasets && !hasValues)) {
+      return null;
+    }
+    
+    // null이 아닌 유효한 값이 있는지 확인
+    let hasValidData = false;
+    if (hasDatasets) {
+      hasValidData = data.datasets.some(ds => 
+        ds.data && ds.data.some(v => v !== null && v !== undefined && !isNaN(v))
+      );
+    } else {
+      const validValues = data.values.filter(v => v !== null && v !== undefined && !isNaN(v));
+      hasValidData = validValues.length > 0;
+    }
+    
+    if (!hasValidData) {
       return null;
     }
     
@@ -63,38 +81,44 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     
     useChartResize(miniChartRef, miniContainerRef);
     
-    const miniData = data.values || [];
-    const miniOptions = {
-      backgroundColor: 'transparent',
-      grid: {
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
-        containLabel: false
-      },
-      xAxis: {
-        type: 'category',
-        data: miniData.map((_, i) => i),
-        show: false,
-        boundaryGap: false
-      },
-      yAxis: {
-        type: 'value',
-        show: false,
-        min: 0,
-        max: 50
-      },
-      series: {
+    // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)
+    const vibrationColors = ['#667eea', '#f093fb', '#11998e', '#ffa500'];
+    
+    // datasets가 있으면 여러 시리즈 생성, 없으면 단일 시리즈
+    let miniSeries = [];
+    let xAxisData = [];
+    
+    if (hasDatasets) {
+      // 여러 데이터셋인 경우
+      const firstDataset = data.datasets[0];
+      xAxisData = firstDataset.data.map((_, i) => i);
+      
+      miniSeries = data.datasets.map((ds, index) => ({
+        type: 'line',
+        data: ds.data || [],
+        smooth: true,
+        symbol: 'none',
+        lineStyle: {
+          color: vibrationColors[index] || '#58a6ff',
+          width: 1.5
+        },
+        areaStyle: null
+      }));
+    } else {
+      // 단일 값인 경우 (온도 등)
+      const miniData = data.values || [];
+      xAxisData = miniData.map((_, i) => i);
+      
+      miniSeries = [{
         type: 'line',
         data: miniData,
         smooth: true,
         symbol: 'none',
-        lineStyle: {
+        lineStyle: options?.series?.lineStyle || {
           color: '#58a6ff',
           width: 1.5
         },
-        areaStyle: {
+        areaStyle: options?.series?.areaStyle || {
           color: {
             type: 'linear',
             x: 0,
@@ -107,12 +131,54 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             ]
           }
         }
+      }];
+    }
+    
+    const miniOptions = {
+      backgroundColor: 'transparent',
+      grid: {
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        containLabel: false
       },
+      xAxis: {
+        type: 'category',
+        data: xAxisData,
+        show: false,
+        boundaryGap: false
+      },
+      yAxis: {
+        type: 'value',
+        show: false,
+        min: options?.yAxis?.min !== undefined ? options.yAxis.min : (hasDatasets ? undefined : 0),
+        max: options?.yAxis?.max !== undefined ? options.yAxis.max : (hasDatasets ? undefined : 50),
+        splitLine: {
+          show: false
+        },
+        axisLine: {
+          show: false
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          show: false
+        },
+        ...options?.yAxis
+      },
+      series: miniSeries,
       tooltip: {
         show: false
-      },
-      ...options
+      }
     };
+    
+    // options 병합 (series는 이미 설정했으므로 제외)
+    const { series: optionsSeries, ...otherOptions } = options || {};
+    Object.assign(miniOptions, otherOptions);
+    
+    // series는 이미 설정했으므로 options의 series는 무시
     
     return (
       <div ref={miniContainerRef} className={`chart chart-mini ${className}`}>
@@ -880,7 +946,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   }
 
   // ECharts 옵션 생성 (line 차트용)
-  const dataset = data.datasets[0];
+  const datasets = data.datasets || [data.datasets?.[0]].filter(Boolean);
+  const dataset = datasets[0]; // 기본 데이터셋 (하위 호환성)
+  
+  // options에서 dataZoom 비활성화 여부 확인
+  const disableDataZoom = options && options.dataZoom && Array.isArray(options.dataZoom) && options.dataZoom.length === 0;
   
   // timeRange 변경 시 dataZoom 초기화를 위한 ref
   const previousTimeRangeRef = useRef(timeRange);
@@ -1040,7 +1110,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       left: 25,
       right: 25,
       top: 30, // 그래프 위쪽 여백 축소
-      bottom: 85, // 슬라이더 높이를 위해 하단 여백 (축소)
+      bottom: 60, // 슬라이더 높이를 위해 하단 여백 (축소)
       containLabel: true
     },
     tooltip: {
@@ -1054,7 +1124,6 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       },
       confine: true, // tooltip이 차트 영역 내에 제한되도록
       appendToBody: false, // body에 append하지 않고 차트 내부에 유지
-      renderMode: 'richText', // richText 모드 사용 (HTML DOM 조작 최소화, innerHTML 오류 방지)
       axisPointer: {
         type: 'line',
         lineStyle: {
@@ -1081,6 +1150,33 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             return '데이터 없음'
           }
           const name = param.name || param.axisValue || ''
+          
+          // 여러 데이터셋이 있는 경우 (진동센서)
+          if (datasets.length > 1) {
+            let tooltipContent = name + '<br/>'
+            params.forEach((p) => {
+              if (p && p.seriesName) {
+                const value = p.value
+                const color = p.color || '#58a6ff'
+                // 색상 마커와 함께 표시
+                const marker = `<span style="display:inline-block;margin-right:5px;border-radius:50%;width:10px;height:10px;background-color:${color};"></span>`
+                
+                if (value === null || value === undefined || isNaN(value)) {
+                  tooltipContent += marker + p.seriesName + ': --<br/>'
+                } else {
+                  const numValue = Number(value)
+                  if (isNaN(numValue)) {
+                    tooltipContent += marker + p.seriesName + ': --<br/>'
+                  } else {
+                    tooltipContent += marker + p.seriesName + ': ' + numValue.toFixed(2) + '<br/>'
+                  }
+                }
+              }
+            })
+            return tooltipContent
+          }
+          
+          // 단일 데이터셋인 경우 (온도)
           const seriesName = param.seriesName || 'Temperature'
           
           if (param.value === null || param.value === undefined || isNaN(param.value)) {
@@ -1105,7 +1201,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       // tooltip DOM이 준비되지 않았을 때를 대비
       alwaysShowContent: false
     },
-    dataZoom: [
+    dataZoom: disableDataZoom ? [] : [
       {
         type: 'inside', // 내부 줌 (마우스 휠로 확대/축소)
         start: dataZoomStateRef.current.start,
@@ -1207,15 +1303,15 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     },
     yAxis: {
       type: 'value',
-      name: 'Temperature (°C)',
+      name: datasets.length > 1 ? 'Vibration' : 'Temperature (°C)', // 여러 데이터셋이면 진동센서
       nameTextStyle: {
         color: '#7d8590',
         fontSize: 10
       },
       boundaryGap: [0, '10%'], // 상단에 10% 여유 공간
-      scale: false,
-      min: yAxisMin, // 명시적인 값 사용 (함수 대신)
-      max: yAxisMax, // 명시적인 값 사용 (함수 대신)
+      scale: datasets.length > 1 ? true : false, // 진동센서는 scale 사용
+      min: datasets.length > 1 ? undefined : yAxisMin, // 진동센서는 자동 범위
+      max: datasets.length > 1 ? undefined : yAxisMax, // 진동센서는 자동 범위
       axisLine: {
         show: false
       },
@@ -1233,26 +1329,31 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       axisLabel: {
         color: '#7d8590',
         fontSize: 10,
-        formatter: '{value}°C'
+        formatter: datasets.length > 1 ? '{value}' : '{value}°C' // 진동센서는 단위 없음
       }
     },
-    series: [
-      {
-        name: dataset.label || 'Temperature',
+    series: datasets.map((ds, index) => {
+      // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)
+      const vibrationColors = ['#667eea', '#f093fb', '#11998e', '#ffa500'];
+      const defaultColors = ['#58a6ff', '#f85149', '#58a6ff', '#ffa500'];
+      const color = ds.borderColor || (datasets.length > 1 ? vibrationColors[index] || defaultColors[index] : '#58a6ff');
+      
+      return {
+        name: ds.label || (index === 0 ? 'Temperature' : `Series ${index + 1}`),
         type: 'line',
-        data: dataset.data,
+        data: ds.data,
         smooth: true,
         sampling: 'lttb', // 대용량 데이터를 위한 LTTB 샘플링
         symbol: 'none', // 심볼 숨김 (성능 향상)
         connectNulls: false, // null 값이 있으면 선을 끊어서 빈 공간으로 표시
         lineStyle: {
-          color: dataset.borderColor || '#58a6ff',
+          color: color,
           width: 1
         },
         itemStyle: {
-          color: dataset.borderColor || '#58a6ff'
+          color: color
         },
-        areaStyle: {
+        areaStyle: datasets.length > 1 ? null : { // 여러 데이터셋이 있으면 areaStyle 비활성화
           color: {
             type: 'linear',
             x: 0,
@@ -1262,11 +1363,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             colorStops: [
               {
                 offset: 0,
-                color: dataset.backgroundColor || 'rgba(88, 166, 255, 0.4)'
+                color: ds.backgroundColor || `rgba(${index === 0 ? '102, 126, 234' : index === 1 ? '240, 147, 251' : '17, 153, 142'}, 0.4)`
               },
               {
                 offset: 1,
-                color: dataset.backgroundColor || 'rgba(88, 166, 255, 0.05)'
+                color: ds.backgroundColor || `rgba(${index === 0 ? '102, 126, 234' : index === 1 ? '240, 147, 251' : '17, 153, 142'}, 0.05)`
               }
             ]
           }
@@ -1277,10 +1378,10 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             width: 1.5
           }
         }
-      }
-    ],
+      };
+    }),
     ...options // 추가 옵션 병합
-  }), [dataset.data, dataset.label, data.labels, data.timestamps, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax, calculateTickInterval]); // 의존성 배열에 필요한 값들 추가
+  }), [datasets, data.labels, data.timestamps, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax, calculateTickInterval]); // 의존성 배열에 필요한 값들 추가
 
   // dataZoom 이벤트 핸들러 - 사용자가 슬라이더를 조작할 때 위치 저장 및 부모에 알림
   const onEvents = {

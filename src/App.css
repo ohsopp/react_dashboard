@@ -66,6 +66,54 @@
   color: #ffffff;
 }
 
+.stat-value.ip-value {
+  font-size: 18px;
+  font-weight: 500;
+  font-family: 'Courier New', monospace;
+  color: #58a6ff;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* IP 패널 전용 스타일 */
+.ip-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.ip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.ip-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #8e9196;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.ip-address {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+  color: #58a6ff;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
 /* SortableJS 스타일 */
 .sortable-ghost {
   opacity: 0.4;

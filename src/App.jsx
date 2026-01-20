@@ -9,6 +9,7 @@ function App() {
   const [temperature, setTemperature] = useState(null)
   const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
   const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
+  const [ipInfo, setIpInfo] = useState({ currentIp: '--', iolinkIp: '--' })
   const eventSourceRef = useRef(null)
   const abortControllerRef = useRef(null) // AbortController 추적
   const selectedRangeRef = useRef(selectedRange) // 최신 selectedRange 추적
@@ -135,9 +136,10 @@ function App() {
     return [
       { id: 'stat-panel6', title: 'Temperature Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">{avgTemperature}</div></div> },
       { id: 'stat-panel7', title: 'Humidity Statistics', content: <div className="stat-panel"><div className="stat-label">평균</div><div className="stat-value">--</div></div> },
-      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">{dataPoints.toLocaleString()}</div></div> }
+      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value-large">{dataPoints.toLocaleString()}</div></div> },
+      { id: 'stat-panel9', title: 'Network IP', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Server IP</span><span className="ip-address">{ipInfo.currentIp}</span></div><div className="ip-row"><span className="ip-label">IO-Link IP</span><span className="ip-address">{ipInfo.iolinkIp}</span></div></div> }
     ]
-  }, [temperature, temperatureHistory])
+  }, [temperature, temperatureHistory, ipInfo])
 
   const [panelSizes, setPanelSizes] = useState({
     panel1: 12, // 전체
@@ -147,11 +149,12 @@ function App() {
     panel5: 6   // 2/4
   })
   
-  // 통계 패널 전용 사이즈/순서/숨김 관리
+  // 통계 패널 전용 사이즈/순서/숨김 관리 (4개를 한 줄에 배치: 12/4 = 3)
   const [statPanelSizes, setStatPanelSizes] = useState({
-    'stat-panel6': 4,  // 1/3
-    'stat-panel7': 4,  // 1/3
-    'stat-panel8': 4   // 1/3
+    'stat-panel6': 3,  // 1/4
+    'stat-panel7': 3,  // 1/4
+    'stat-panel8': 3,  // 1/4
+    'stat-panel9': 3   // 1/4
   })
   
   const [isDragging, setIsDragging] = useState(false)
@@ -169,11 +172,11 @@ function App() {
   })
   
   const [statPanelOrder, setStatPanelOrder] = useState(() => {
-    return [0, 1, 2]
+    return [0, 1, 2, 3]
   })
   
   const panelOrderRef = useRef([0, 1, 2, 3, 4])
-  const statPanelOrderRef = useRef([0, 1, 2])
+  const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 12,
     panel2: 6,
@@ -182,9 +185,10 @@ function App() {
     panel5: 6
   })
   const statPanelSizesRef = useRef({
-    'stat-panel6': 4,
-    'stat-panel7': 4,
-    'stat-panel8': 4
+    'stat-panel6': 3,
+    'stat-panel7': 3,
+    'stat-panel8': 3,
+    'stat-panel9': 3
   })
   
   // panelConfigs의 길이가 변경되면 panelOrderRef 업데이트 (무한 루프 방지)
@@ -298,6 +302,30 @@ function App() {
       }
     }
   }, [selectedRange]) // fetchTemperatureHistory는 ref를 사용하므로 의존성에서 제거 (클로저 문제 해결)
+
+  // IP 정보 가져오기
+  useEffect(() => {
+    const fetchIpInfo = async () => {
+      try {
+        const response = await fetch('http://localhost:5005/api/system/ip')
+        if (response.ok) {
+          const data = await response.json()
+          setIpInfo({
+            currentIp: data.current_ip || '--',
+            iolinkIp: data.iolink_ip || '--'
+          })
+        }
+      } catch (error) {
+        console.error('IP 정보 가져오기 실패:', error)
+      }
+    }
+    
+    fetchIpInfo()
+    // 30초마다 IP 정보 업데이트
+    const interval = setInterval(fetchIpInfo, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
 
   // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
   useEffect(() => {
@@ -825,6 +853,7 @@ function App() {
                 onModalOpen={() => setIsModalOpen(true)}
                 onModalClose={() => setIsModalOpen(false)}
                 onHide={() => handleHideStatPanel(config.id)}
+                showCsv={false}
               >
                 {config.content}
               </Panel>

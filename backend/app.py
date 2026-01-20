@@ -7,6 +7,7 @@ import queue
 import time
 import csv
 import io
+import socket
 from datetime import datetime, timedelta, timezone
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -22,6 +23,9 @@ CORS(app)
 MQTT_BROKER = '192.168.1.3'
 MQTT_PORT = 1883
 MQTT_TOPIC = 'TP3237'  # 온도 센서 토픽
+
+# IO-Link IP 설정
+IOLINK_IP = '192.168.1.4'
 
 # InfluxDB 설정
 INFLUXDB_URL = 'http://localhost:8090'
@@ -187,6 +191,42 @@ def connect_mqtt():
 # 백그라운드에서 MQTT 연결
 mqtt_thread = threading.Thread(target=connect_mqtt, daemon=True)
 mqtt_thread.start()
+
+def get_server_ip():
+    """서버의 외부 IP 주소 감지"""
+    try:
+        # 소켓을 통해 외부 서버에 연결하여 로컬 IP 확인
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # 외부 서버에 연결 시도 (실제로 연결하지 않고 로컬 IP만 확인)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        except Exception:
+            # 연결 실패 시 localhost 사용
+            ip = '127.0.0.1'
+        finally:
+            s.close()
+        return ip
+    except Exception as e:
+        print(f"⚠️ IP 감지 실패: {e}")
+        return '127.0.0.1'
+
+@app.route('/api/system/ip', methods=['GET'])
+def get_ip_info():
+    """시스템 IP 정보 반환"""
+    try:
+        server_ip = get_server_ip()
+        
+        return jsonify({
+            'current_ip': server_ip,
+            'iolink_ip': IOLINK_IP
+        })
+    except Exception as e:
+        print(f"❌ IP 정보 가져오기 실패: {e}")
+        return jsonify({
+            'current_ip': '--',
+            'iolink_ip': IOLINK_IP
+        }), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

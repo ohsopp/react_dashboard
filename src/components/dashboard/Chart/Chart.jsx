@@ -4,6 +4,25 @@ import './Chart.css';
 
 // Chart 컴포넌트
 const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, dataZoomEnd, onDataZoomChange, timeRange, value }) => {
+  // 모달 내부에 있는지 확인하는 훅
+  const containerRef = useRef(null);
+  const [isInModal, setIsInModal] = React.useState(false);
+  
+  useEffect(() => {
+    if (containerRef.current) {
+      // 부모 요소를 따라 올라가며 panel-modal 클래스가 있는지 확인
+      let parent = containerRef.current.parentElement;
+      while (parent) {
+        if (parent.classList.contains('panel-modal-content') || parent.classList.contains('panel-modal')) {
+          setIsInModal(true);
+          return;
+        }
+        parent = parent.parentElement;
+      }
+      setIsInModal(false);
+    }
+  }, []);
+  
   // 공통 차트 리사이즈 훅
   const useChartResize = (chartRef, containerRef) => {
     useEffect(() => {
@@ -1104,14 +1123,19 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   }, [data.timestamps, data.labels])
   
   // echartsOption을 useMemo로 감싸서 데이터나 timeRange가 변경될 때만 재생성
+  const defaultGrid = {
+    left: 25,
+    right: 25,
+    top: 30, // 그래프 위쪽 여백 축소
+    bottom: isInModal ? 70 : 30, // 모달에서는 슬라이더를 위해 하단 여백, 일반 패널에서는 작은 여백
+    containLabel: true
+  };
+  
   const echartsOption = useMemo(() => ({
     animation: false, // 실시간 업데이트를 위해 애니메이션 비활성화
     grid: {
-      left: 25,
-      right: 25,
-      top: 30, // 그래프 위쪽 여백 축소
-      bottom: 60, // 슬라이더 높이를 위해 하단 여백 (축소)
-      containLabel: true
+      ...defaultGrid,
+      ...(options?.grid || {}) // options의 grid가 있으면 병합
     },
     tooltip: {
       trigger: 'axis',
@@ -1202,15 +1226,17 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       alwaysShowContent: false
     },
     dataZoom: disableDataZoom ? [] : [
-      {
+      // 모달에서만 inside 타입 추가 (일반 패널에서는 웹페이지 스크롤 가능하도록 제거)
+      ...(isInModal ? [{
         type: 'inside', // 내부 줌 (마우스 휠로 확대/축소)
         start: dataZoomStateRef.current.start,
         end: dataZoomStateRef.current.end,
-        zoomOnMouseWheel: true,
+        zoomOnMouseWheel: false, // 마우스 휠 줌 비활성화
         moveOnMouseMove: true,
-        moveOnMouseWheel: false
-      },
-      {
+        moveOnMouseWheel: false // 마우스 휠로 그래프 이동 비활성화 (웹페이지 스크롤 가능)
+      }] : []),
+      // 모달에서만 슬라이더 표시
+      ...(isInModal ? [{
         type: 'slider', // 하단 슬라이더
         start: dataZoomStateRef.current.start,
         end: dataZoomStateRef.current.end,
@@ -1245,7 +1271,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             color: 'rgba(88, 166, 255, 0.3)'
           }
         }
-      }
+      }] : [])
     ],
     xAxis: {
       type: 'category',
@@ -1380,8 +1406,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         }
       };
     }),
-    ...options // 추가 옵션 병합
-  }), [datasets, data.labels, data.timestamps, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax, calculateTickInterval]); // 의존성 배열에 필요한 값들 추가
+    ...options // 추가 옵션 병합 (grid는 이미 위에서 병합됨)
+  }), [datasets, data.labels, data.timestamps, dataZoomStart, dataZoomEnd, timeRange, yAxisMin, yAxisMax, calculateTickInterval, options, isInModal]); // 의존성 배열에 isInModal 추가
 
   // dataZoom 이벤트 핸들러 - 사용자가 슬라이더를 조작할 때 위치 저장 및 부모에 알림
   const onEvents = {
@@ -1499,6 +1525,13 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
 
   const lineContainerRef = useRef(null);
   useChartResize(chartRef, lineContainerRef);
+  
+  // containerRef를 lineContainerRef에 연결
+  useEffect(() => {
+    if (lineContainerRef.current) {
+      containerRef.current = lineContainerRef.current;
+    }
+  }, []);
 
   return (
     <div 

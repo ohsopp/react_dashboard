@@ -4,6 +4,14 @@ import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 import Chart from './components/dashboard/Chart/Chart'
 
+// 일반 패널 그래프 grid 설정 (유지보수 편의를 위해 상수로 분리)
+const DEFAULT_PANEL_GRID = {
+  left: '35px',
+  right: '35px',
+  bottom: '10%',
+  top: '10%'
+}
+
 function App() {
   const [selectedRange, setSelectedRange] = useState('1h')
   const [temperature, setTemperature] = useState(null)
@@ -62,7 +70,8 @@ function App() {
             onDataZoomChange={(start, end) => setDataZoomRange({ start, end })}
             options={{
               animation: false,
-              sampling: 'lttb'
+              sampling: 'lttb',
+              grid: DEFAULT_PANEL_GRID
             }}
           />
         ) : (
@@ -129,7 +138,9 @@ function App() {
             timeRange={selectedRange}
             options={{
               animation: false,
-              sampling: 'lttb'
+              sampling: 'lttb',
+              grid: DEFAULT_PANEL_GRID
+
             }}
           />
         ) : (
@@ -179,7 +190,8 @@ function App() {
             options={{
               animation: false,
               sampling: 'lttb',
-              dataZoom: [] // 진동센서 그래프는 줌 기능 비활성화
+              dataZoom: [], // 진동센서 그래프는 줌 기능 비활성화
+              grid: DEFAULT_PANEL_GRID
             }}
           />
         ) : (
@@ -206,13 +218,13 @@ function App() {
     // 데이터 포인트 개수
     const dataPoints = temperatureHistory.values ? temperatureHistory.values.length : 0
     
-    // 진동센서 평균 계산 (v-RMS 사용)
+    // 진동센서 평균 계산 (Crest 사용)
     let avgVibration = '--'
-    if (vibrationHistory.v_rms && vibrationHistory.v_rms.length > 0) {
-      const validValues = vibrationHistory.v_rms.filter(v => v !== null && v !== undefined && !isNaN(v))
+    if (vibrationHistory.crest && vibrationHistory.crest.length > 0) {
+      const validValues = vibrationHistory.crest.filter(v => v !== null && v !== undefined && !isNaN(v))
       if (validValues.length > 0) {
         const sum = validValues.reduce((acc, val) => acc + val, 0)
-        avgVibration = (sum / validValues.length).toFixed(4) + ' mm/s'
+        avgVibration = (sum / validValues.length).toFixed(2)
       }
     }
     

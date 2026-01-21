@@ -56,6 +56,9 @@ latest_vibration_data = {
 # 마지막 저장 시간 추적 (샘플링 레이트 제어)
 last_vibration_save_time = 0
 
+# 마지막 MQTT 메시지 수신 시간 추적 (지연시간 계산용)
+last_mqtt_message_time = None
+
 # InfluxDB 클라이언트 초기화
 try:
     influx_client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
@@ -216,7 +219,9 @@ def on_connect(client, userdata, flags, rc):
         print(f"❌ MQTT Connection failed with code {rc}")
 
 def on_message(client, userdata, msg):
+    global last_mqtt_message_time
     try:
+        last_mqtt_message_time = time.time()  # 메시지 수신 시간 기록
         message_str = msg.payload.decode('utf-8')
         print(f"📨 MQTT Message received on topic {msg.topic}: {message_str}")
         
@@ -463,6 +468,92 @@ def get_ip_info():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Flask backend is running'})
+
+@app.route('/api/network/status', methods=['GET'])
+def network_status():
+    """네트워크 연결 상태 확인 (MQTT, InfluxDB) 및 지연시간 측정"""
+    import time
+    
+    status = {
+        'mqtt': {
+            'connected': False,
+            'latency': None  # ms
+        },
+        'influxdb': {
+            'connected': False,
+            'latency': None  # ms
+        }
+    }
+    
+    # MQTT 연결 상태 확인 및 지연시간 측정
+    if mqtt_client is not None:
+        try:
+            # MQTT 클라이언트의 연결 상태 확인
+            # _state 속성 사용 (0=연결 안 됨, 1=연결 중, 2=연결됨)
+            mqtt_connected = False
+            if hasattr(mqtt_client, '_state'):
+                mqtt_state = mqtt_client._state
+                mqtt_connected = mqtt_state == mqtt.mqtt_cs_connected
+            elif hasattr(mqtt_client, 'is_connected'):
+                mqtt_connected = mqtt_client.is_connected()
+            else:
+                # fallback: MQTT 클라이언트가 초기화되어 있고 loop가 실행 중이면 연결된 것으로 간주
+                try:
+                    # _thread와 _state를 확인
+                    if hasattr(mqtt_client, '_thread') and mqtt_client._thread and mqtt_client._thread.is_alive():
+                        mqtt_connected = True
+                except:
+                    mqtt_connected = False
+            
+            status['mqtt']['connected'] = mqtt_connected
+            
+            # MQTT 지연시간 측정 (연결된 경우에만)
+            if mqtt_connected:
+                try:
+                    # 마지막 메시지 수신 시간과 현재 시간의 차이로 지연시간 추정
+                    if last_mqtt_message_time is not None:
+                        # 마지막 메시지 수신 후 경과 시간 (초)
+                        time_since_last_message = time.time() - last_mqtt_message_time
+                        # 메시지가 최근에 수신되었다면 지연시간이 낮은 것으로 간주
+                        # 5초 이내에 메시지가 수신되었다면 <5ms로 표시
+                        if time_since_last_message < 5:
+                            status['mqtt']['latency'] = round(time_since_last_message * 1000, 1)
+                        else:
+                            # 오래 전 메시지면 지연시간 측정 불가
+                            status['mqtt']['latency'] = None
+                    elif hasattr(mqtt_client, '_sock') and mqtt_client._sock:
+                        # 소켓이 열려있지만 메시지가 없으면 연결만 된 상태
+                        status['mqtt']['latency'] = None
+                    else:
+                        status['mqtt']['latency'] = None
+                except:
+                    status['mqtt']['latency'] = None
+        except Exception as e:
+            print(f"⚠️ MQTT status check error: {e}")
+            status['mqtt']['connected'] = False
+            status['mqtt']['latency'] = None
+    else:
+        status['mqtt']['connected'] = False
+        status['mqtt']['latency'] = None
+    
+    # InfluxDB 연결 상태 확인 및 지연시간 측정
+    if influx_client is not None:
+        try:
+            start_time = time.time()
+            is_connected = influx_client.ping()
+            latency = round((time.time() - start_time) * 1000, 1)  # ms로 변환
+            
+            status['influxdb']['connected'] = is_connected
+            status['influxdb']['latency'] = latency if is_connected else None
+        except Exception as e:
+            print(f"⚠️ InfluxDB status check error: {e}")
+            status['influxdb']['connected'] = False
+            status['influxdb']['latency'] = None
+    else:
+        status['influxdb']['connected'] = False
+        status['influxdb']['latency'] = None
+    
+    return jsonify(status)
 
 @app.route('/api/test', methods=['GET'])
 def test():

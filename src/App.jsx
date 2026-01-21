@@ -19,6 +19,10 @@ function App() {
   const [vibrationHistory, setVibrationHistory] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
   const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
   const [ipInfo, setIpInfo] = useState({ currentIp: '--', iolinkIp: '--' })
+  const [networkStatus, setNetworkStatus] = useState({
+    mqtt: { connected: false, latency: null },
+    influxdb: { connected: false, latency: null }
+  })
   const eventSourceRef = useRef(null)
   const abortControllerRef = useRef(null) // AbortController 추적
   const selectedRangeRef = useRef(selectedRange) // 최신 selectedRange 추적
@@ -215,9 +219,6 @@ function App() {
       }
     }
     
-    // 데이터 포인트 개수
-    const dataPoints = temperatureHistory.values ? temperatureHistory.values.length : 0
-    
     // 진동센서 평균 계산 (Crest 사용)
     let avgVibration = '--'
     if (vibrationHistory.crest && vibrationHistory.crest.length > 0) {
@@ -225,6 +226,21 @@ function App() {
       if (validValues.length > 0) {
         const sum = validValues.reduce((acc, val) => acc + val, 0)
         avgVibration = (sum / validValues.length).toFixed(2)
+      }
+    }
+    
+    // 실시간 온도값
+    const currentTemperature = temperature !== null && temperature !== undefined && !isNaN(temperature) 
+      ? `${temperature.toFixed(1)}°C` 
+      : '--'
+    
+    // 실시간 진동값 (Crest, 최신값)
+    let currentVibration = '--'
+    if (vibrationHistory.crest && vibrationHistory.crest.length > 0) {
+      const latestValues = vibrationHistory.crest.slice(-1) // 최신값
+      const latestValue = latestValues[0]
+      if (latestValue !== null && latestValue !== undefined && !isNaN(latestValue)) {
+        currentVibration = latestValue.toFixed(2)
       }
     }
     
@@ -300,10 +316,10 @@ function App() {
           </div>
         </div>
       ) },
-      { id: 'stat-panel8', title: 'Data Points', content: <div className="stat-panel"><div className="stat-value">{dataPoints.toLocaleString()}</div></div> },
-      { id: 'stat-panel9', title: 'Network IP', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Server IP</span><span className="ip-address">{ipInfo.currentIp}</span></div><div className="ip-row"><span className="ip-label">IO-Link IP</span><span className="ip-address">{ipInfo.iolinkIp}</span></div></div> }
+      { id: 'stat-panel8', title: 'Real-time Values', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Temperature</span><span className="ip-address">{currentTemperature}</span></div><div className="ip-row"><span className="ip-label">Vibration (Crest)</span><span className="ip-address">{currentVibration}</span></div></div> },
+      { id: 'stat-panel9', title: 'Network Status', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">MQTT</span><div className="status-row"><span className={`status-indicator ${networkStatus.mqtt.connected ? 'connected' : 'disconnected'}`}></span><span className="ip-address">{networkStatus.mqtt.connected ? (networkStatus.mqtt.latency !== null ? `${networkStatus.mqtt.latency}ms` : '--') : 'Disconnected'}</span></div></div><div className="ip-row"><span className="ip-label">InfluxDB</span><div className="status-row"><span className={`status-indicator ${networkStatus.influxdb.connected ? 'connected' : 'disconnected'}`}></span><span className="ip-address">{networkStatus.influxdb.connected ? (networkStatus.influxdb.latency !== null ? `${networkStatus.influxdb.latency}ms` : '--') : 'Disconnected'}</span></div></div></div> }
     ]
-  }, [temperature, temperatureHistory, vibrationHistory, ipInfo])
+  }, [temperature, temperatureHistory, vibrationHistory, ipInfo, networkStatus])
 
   // 기본 레이아웃: panel1, panel6, panel7 (3등분), panel2, panel5 (2등분)
   const DEFAULT_PANEL_SIZES = {
@@ -579,6 +595,31 @@ function App() {
     fetchIpInfo()
     // 30초마다 IP 정보 업데이트
     const interval = setInterval(fetchIpInfo, 30000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  // 네트워크 연결 상태 확인 (MQTT, InfluxDB)
+  useEffect(() => {
+    const fetchNetworkStatus = async () => {
+      try {
+        const response = await fetch('/api/network/status')
+        if (response.ok) {
+          const data = await response.json()
+          setNetworkStatus(data)
+        }
+      } catch (error) {
+        console.error('네트워크 상태 확인 실패:', error)
+        setNetworkStatus({
+          mqtt: { connected: false, latency: null },
+          influxdb: { connected: false, latency: null }
+        })
+      }
+    }
+    
+    fetchNetworkStatus()
+    // 5초마다 네트워크 상태 업데이트
+    const interval = setInterval(fetchNetworkStatus, 5000)
     
     return () => clearInterval(interval)
   }, [])

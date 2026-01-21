@@ -1277,6 +1277,36 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       // tooltip DOM이 준비되지 않았을 때를 대비
       alwaysShowContent: false
     },
+    legend: datasets.length > 1 ? {
+      // 여러 데이터셋이 있는 경우(진동센서)에만 legend 표시
+      show: true,
+      top: isInModal ? 10 : 0, // 모달패널은 10, 일반 모달은 0 (위로 이동)
+      left: 'center',
+      itemGap: 20,
+      textStyle: {
+        color: '#7d8590',
+        fontSize: isInModal ? 14 : 12
+      },
+      icon: 'rect',
+      itemWidth: 14,
+      itemHeight: 2,
+      type: 'scroll', // 항목이 많을 경우 스크롤 가능
+      data: datasets.map((ds, index) => {
+        // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)
+        const vibrationColors = ['#667eea', '#f093fb', '#11998e', '#ffa500'];
+        const defaultColors = ['#58a6ff', '#f85149', '#58a6ff', '#ffa500'];
+        const color = ds.borderColor || (datasets.length > 1 ? vibrationColors[index] || defaultColors[index] : '#58a6ff');
+        return {
+          name: ds.label || `Series ${index + 1}`,
+          icon: 'rect',
+          itemStyle: {
+            color: color
+          }
+        };
+      })
+    } : {
+      show: false
+    },
     dataZoom: disableDataZoom ? [] : [],
     xAxis: {
       type: 'category',
@@ -1379,7 +1409,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         connectNulls: false, // null 값이 있으면 선을 끊어서 빈 공간으로 표시
         lineStyle: {
           color: color,
-          width: 1
+          width: isInModal ? 2 : 1 // 모달패널에서는 2, 일반 모달에서는 1
         },
         itemStyle: {
           color: color
@@ -1401,12 +1431,6 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 color: ds.backgroundColor || `rgba(${index === 0 ? '102, 126, 234' : index === 1 ? '240, 147, 251' : '17, 153, 142'}, 0.05)`
               }
             ]
-          }
-        },
-        emphasis: {
-          focus: 'series',
-          lineStyle: {
-            width: 1.5
           }
         }
       };

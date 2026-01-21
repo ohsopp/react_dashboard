@@ -23,8 +23,8 @@ const DataRangeSelector = ({ selected, onSelect, onEdit }) => {
         ))}
       </div>
       {onEdit && (
-        <button className="data-range-edit-button" onClick={onEdit} title="편집">
-          편집
+        <button className="data-range-edit-button" onClick={onEdit} title="숨겨진 패널 보기">
+          More Panels
         </button>
       )}
     </div>

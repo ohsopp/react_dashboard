@@ -55,7 +55,6 @@
 .panel-extension-button:hover {
   background: rgba(88, 166, 255, 0.2);
   border-color: #58a6ff;
-  transform: scale(1.1);
 }
 
 .panel-extension-button:hover img {
@@ -63,7 +62,7 @@
 }
 
 .panel-extension-button:active {
-  transform: scale(0.95);
+  /* active 상태의 크기 변화 제거 */
 }
 
 .panel-csv-button {

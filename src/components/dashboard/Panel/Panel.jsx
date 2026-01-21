@@ -39,12 +39,12 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
       return
     }
     
-    // 리사이즈 중이거나 드래그 중이면 확장 버튼 표시 안 함
-    if (isResizing || isDragging) {
+    // 드래그 중이면 확장 버튼 표시 안 함
+    if (isDragging) {
       return
     }
     
-    // 확장 버튼 표시
+    // 확장 버튼 표시 (리사이징 중에도 표시)
     setShowExtensionButton(true)
   }
 
@@ -65,6 +65,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
   }
 
   const handlePanelMouseLeave = () => {
+    // 리사이징 중이면 확장 버튼 유지
+    if (isResizing) {
+      return
+    }
+    
     // 패널에서 마우스가 벗어나면 확장 버튼 숨기기
     setShowExtensionButton(false)
   }
@@ -90,6 +95,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
   const handleResizeStart = (e) => {
     e.stopPropagation()
     setIsResizing(true)
+    
+    // 리사이징 중에도 확장 버튼 표시
+    if (!id?.startsWith('stat-panel')) {
+      setShowExtensionButton(true)
+    }
     
     // 리사이징 중 body에 클래스 추가 (전체 UX 개선)
     document.body.style.cursor = 'ew-resize'

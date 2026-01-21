@@ -1,5 +1,6 @@
 import './TopBar.css'
 import Breadcrumb from '../Breadcrumb/Breadcrumb'
+import uitLogo from '../../../assets/icons/uit_logo.png'
 
 const INFLUXDB_URL = 'http://localhost:8090'
 
@@ -42,9 +43,7 @@ const TopBar = ({ breadcrumbItems, timeRange, onRefresh }) => {
     <header className="topbar">
       <div className="topbar-left">
         <div className="topbar-logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-          </svg>
+          <img src={uitLogo} alt="UIT Logo" style={{ height: '20px', width: 'auto' }} />
         </div>
         {breadcrumbItems && <Breadcrumb items={breadcrumbItems} />}
       </div>

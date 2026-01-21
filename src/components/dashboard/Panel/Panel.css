@@ -20,7 +20,8 @@
 }
 
 .panel:hover .panel-hide-button,
-.panel:hover .panel-csv-button {
+.panel:hover .panel-csv-button,
+.panel:hover .panel-extension-button {
   display: flex;
 }
 

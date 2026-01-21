@@ -1,7 +1,7 @@
 import './PanelHeader.css'
 import eyeIcon from '../../../assets/icons/eye_icon.png'
 
-const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true }) => {
+const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, children }) => {
   const handleHideClick = (e) => {
     e.stopPropagation()
     if (onHide) {
@@ -45,6 +45,7 @@ const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true }) =>
             <img src={eyeIcon} alt="숨기기" />
           </button>
         )}
+        {children}
       </div>
     </div>
   )

@@ -8,30 +8,48 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   const containerRef = useRef(null);
   const [isInModal, setIsInModal] = React.useState(false);
   
-  useEffect(() => {
-    const checkModal = () => {
-      if (containerRef.current) {
-        // 부모 요소를 따라 올라가며 panel-modal 클래스가 있는지 확인
-        let parent = containerRef.current.parentElement;
-        while (parent) {
-          if (parent.classList.contains('panel-modal-content') || parent.classList.contains('panel-modal')) {
-            setIsInModal(true);
-            return;
-          }
-          parent = parent.parentElement;
-        }
-        setIsInModal(false);
-      }
-    };
-    
-    checkModal();
-    // MutationObserver를 사용하여 DOM 변경 감지
-    const observer = new MutationObserver(checkModal);
+  // 모달 내부인지 체크하는 함수
+  const checkIfInModal = () => {
     if (containerRef.current) {
-      observer.observe(document.body, { childList: true, subtree: true });
+      // 부모 요소를 따라 올라가며 panel-modal 클래스가 있는지 확인
+      let parent = containerRef.current.parentElement;
+      while (parent) {
+        if (parent.classList.contains('panel-modal-content') || parent.classList.contains('panel-modal')) {
+          setIsInModal(true);
+          return;
+        }
+        parent = parent.parentElement;
+      }
+      setIsInModal(false);
+    }
+  };
+  
+  useEffect(() => {
+    // 초기 체크
+    checkIfInModal();
+    
+    // MutationObserver를 사용하여 DOM 변경 감지
+    const observer = new MutationObserver(() => {
+      checkIfInModal();
+    });
+    
+    // body를 관찰하여 모달이 추가/제거될 때 감지
+    if (document.body) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
     }
     
-    return () => observer.disconnect();
+    // 주기적으로도 체크 (안전장치)
+    const intervalId = setInterval(() => {
+      checkIfInModal();
+    }, 500);
+    
+    return () => {
+      observer.disconnect();
+      clearInterval(intervalId);
+    };
   }, []);
   
   // 공통 차트 리사이즈 훅
@@ -344,13 +362,13 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         borderWidth: 1,
         textStyle: {
           color: '#c9d1d9',
-          fontSize: isInModal ? 20 : 12
+          fontSize: isInModal ? 14 : 12
         }
       },
       grid: {
         left: '3%',
         right: '2%',
-        bottom: isInModal ? '15%' : '10%', // 모달에서는 슬라이더를 위해 하단 여백 증가
+        bottom: '10%',
         top: '15%'
       },
       xAxis: {
@@ -369,7 +387,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         },
         axisLabel: {
           color: '#7d8590',
-          fontSize: isInModal ? 18 : 10,
+          fontSize: isInModal ? 14 : 10,
           rotate: 0,
           interval: 0,
           showMinLabel: false,
@@ -412,7 +430,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         name: 'Temperature (°C)',
         nameTextStyle: {
           color: '#7d8590',
-          fontSize: isInModal ? 18 : 10
+          fontSize: isInModal ? 14 : 10
         },
         min: 0,
         max: 50,
@@ -423,7 +441,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         },
         axisLabel: {
           color: '#7d8590',
-          fontSize: isInModal ? 18 : 10,
+          fontSize: isInModal ? 14 : 10,
           formatter: '{value}°C'
         },
         splitLine: {
@@ -432,52 +450,6 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           }
         }
       },
-      dataZoom: isInModal ? [
-        {
-          type: 'inside', // 내부 줌 (마우스 휠로 확대/축소)
-          start: 0,
-          end: 100,
-          zoomOnMouseWheel: false, // 마우스 휠 줌 비활성화
-          moveOnMouseMove: true,
-          moveOnMouseWheel: false // 마우스 휠로 그래프 이동 비활성화
-        },
-        {
-          type: 'slider', // 하단 슬라이더
-          start: 0,
-          end: 100,
-          height: 30, // 슬라이더 높이
-          handleIcon: 'path://M30.9,53.2C16.8,53.2,5.3,41.7,5.3,27.6S16.8,2,30.9,2C45,2,56.4,13.5,56.4,27.6S45,53.2,30.9,53.2z M30.9,3.5C17.6,3.5,6.8,14.4,6.8,27.6c0,13.2,10.8,24.1,24.1,24.1C44.2,51.7,55,40.8,55,27.6C54.9,14.4,44.1,3.5,30.9,3.5z M36.9,35.8c0,0.6-0.4,1-1,1H26.8c-0.6,0-1-0.4-1-1V19.4c0-0.6,0.4-1,1-1h9.1c0.6,0,1,0.4,1,1V35.8z',
-          handleSize: '80%',
-          handleStyle: {
-            color: '#58a6ff',
-            borderColor: '#58a6ff'
-          },
-          textStyle: {
-            color: '#7d8590',
-            fontSize: isInModal ? 18 : 10
-          },
-          borderColor: '#30363d',
-          fillerColor: 'rgba(88, 166, 255, 0.2)',
-          dataBackground: {
-            lineStyle: {
-              color: '#58a6ff',
-              width: 1
-            },
-            areaStyle: {
-              color: 'rgba(88, 166, 255, 0.1)'
-            }
-          },
-          selectedDataBackground: {
-            lineStyle: {
-              color: '#58a6ff',
-              width: 2
-            },
-            areaStyle: {
-              color: 'rgba(88, 166, 255, 0.3)'
-            }
-          }
-        }
-      ] : [],
       visualMap: {
         top: 50,
         right: 10,
@@ -536,7 +508,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 position: 'end',
                 formatter: '15°C',
                 color: '#7d8590',
-                fontSize: isInModal ? 18 : 10
+                fontSize: isInModal ? 12 : 10
               }
             },
             {
@@ -546,7 +518,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 position: 'end',
                 formatter: '25°C',
                 color: '#7d8590',
-                fontSize: 10
+                fontSize: isInModal ? 12 : 10
               }
             },
             {
@@ -556,7 +528,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 position: 'end',
                 formatter: '35°C',
                 color: '#7d8590',
-                fontSize: 10
+                fontSize: isInModal ? 12 : 10
               }
             },
             {
@@ -566,7 +538,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 position: 'end',
                 formatter: '40°C',
                 color: '#7d8590',
-                fontSize: 10
+                fontSize: isInModal ? 12 : 10
               }
             },
             {
@@ -576,7 +548,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 position: 'end',
                 formatter: '50°C',
                 color: '#7d8590',
-                fontSize: 10
+                fontSize: isInModal ? 12 : 10
               }
             }
           ]
@@ -668,7 +640,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           },
           axisLabel: {
             color: '#c9d1d9',
-            fontSize: 11,
+            fontSize: isInModal ? 13 : 11,
             distance: -18,
             formatter: function(value) {
               if (value === 0 || value === 50) {
@@ -683,7 +655,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
             lineHeight: 18,
             borderRadius: 6,
             offsetCenter: [0, '15%'],
-            fontSize: 24,
+            fontSize: isInModal ? 28 : 24,
             fontWeight: 'bold',
             formatter: function(value) {
               return value.toFixed(1) + '°C';
@@ -711,7 +683,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         borderWidth: 1,
         textStyle: {
           color: '#c9d1d9',
-          fontSize: 12
+          fontSize: isInModal ? 14 : 12
         }
       },
       ...options
@@ -820,7 +792,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         borderWidth: 1,
         textStyle: {
           color: '#c9d1d9',
-          fontSize: 12
+          fontSize: isInModal ? 14 : 12
         }
       },
       grid: {
@@ -841,7 +813,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         },
         axisLabel: {
           color: '#7d8590',
-          fontSize: 10
+          fontSize: isInModal ? 12 : 10
         }
       },
       yAxis: {
@@ -858,7 +830,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         },
         axisLabel: {
           color: '#7d8590',
-          fontSize: 10
+          fontSize: isInModal ? 12 : 10
         }
       },
       series: [
@@ -959,7 +931,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         borderWidth: 1,
         textStyle: {
           color: '#c9d1d9',
-          fontSize: 12
+          fontSize: isInModal ? 14 : 12
         }
       },
       visualMap: {
@@ -982,7 +954,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           roseType: 'radius',
           label: {
             color: 'rgba(255, 255, 255, 0.8)',
-            fontSize: 12
+            fontSize: isInModal ? 14 : 12
           },
           labelLine: {
             lineStyle: {
@@ -1184,7 +1156,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     left: 25,
     right: 25,
     top: 30, // 그래프 위쪽 여백 축소
-    bottom: isInModal ? 70 : 30, // 모달에서는 슬라이더를 위해 하단 여백, 일반 패널에서는 작은 여백
+    bottom: 30, // 하단 여백
     containLabel: true
   };
   
@@ -1201,7 +1173,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       borderWidth: 1,
       textStyle: {
         color: '#c9d1d9',
-        fontSize: isInModal ? 20 : 12
+        fontSize: isInModal ? 14 : 12
       },
       confine: true, // tooltip이 차트 영역 내에 제한되도록
       appendToBody: false, // body에 append하지 않고 차트 내부에 유지
@@ -1218,7 +1190,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           borderColor: '#30363d',
           borderWidth: 1,
           color: '#c9d1d9',
-          fontSize: isInModal ? 20 : 12
+          fontSize: isInModal ? 14 : 12
         }
       },
       formatter: function(params) {
@@ -1282,54 +1254,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       // tooltip DOM이 준비되지 않았을 때를 대비
       alwaysShowContent: false
     },
-    dataZoom: (disableDataZoom && !isInModal) ? [] : [
-      // 모달에서만 inside 타입 추가 (일반 패널에서는 웹페이지 스크롤 가능하도록 제거)
-      ...(isInModal ? [{
-        type: 'inside', // 내부 줌 (마우스 휠로 확대/축소)
-        start: dataZoomStateRef.current.start,
-        end: dataZoomStateRef.current.end,
-        zoomOnMouseWheel: false, // 마우스 휠 줌 비활성화
-        moveOnMouseMove: true,
-        moveOnMouseWheel: false // 마우스 휠로 그래프 이동 비활성화 (웹페이지 스크롤 가능)
-      }] : []),
-      // 모달에서만 슬라이더 표시
-      ...(isInModal ? [{
-        type: 'slider', // 하단 슬라이더
-        start: dataZoomStateRef.current.start,
-        end: dataZoomStateRef.current.end,
-        height: 30, // 슬라이더 높이 축소
-        handleIcon: 'path://M30.9,53.2C16.8,53.2,5.3,41.7,5.3,27.6S16.8,2,30.9,2C45,2,56.4,13.5,56.4,27.6S45,53.2,30.9,53.2z M30.9,3.5C17.6,3.5,6.8,14.4,6.8,27.6c0,13.2,10.8,24.1,24.1,24.1C44.2,51.7,55,40.8,55,27.6C54.9,14.4,44.1,3.5,30.9,3.5z M36.9,35.8c0,0.6-0.4,1-1,1H26.8c-0.6,0-1-0.4-1-1V19.4c0-0.6,0.4-1,1-1h9.1c0.6,0,1,0.4,1,1V35.8z',
-        handleSize: '80%',
-        handleStyle: {
-          color: '#58a6ff',
-          borderColor: '#58a6ff'
-        },
-        textStyle: {
-          color: '#7d8590',
-          fontSize: isInModal ? 18 : 10
-        },
-        borderColor: '#30363d',
-        fillerColor: 'rgba(88, 166, 255, 0.2)',
-        dataBackground: {
-          lineStyle: {
-            color: '#58a6ff',
-            width: 1
-          },
-          areaStyle: {
-            color: 'rgba(88, 166, 255, 0.1)'
-          }
-        },
-        selectedDataBackground: {
-          lineStyle: {
-            color: '#58a6ff',
-            width: 2
-          },
-          areaStyle: {
-            color: 'rgba(88, 166, 255, 0.3)'
-          }
-        }
-      }] : [])
-    ],
+    dataZoom: disableDataZoom ? [] : [],
     xAxis: {
       type: 'category',
       data: data.labels,
@@ -1346,7 +1271,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       },
       axisLabel: {
         color: '#7d8590',
-        fontSize: isInModal ? 18 : 10,
+        fontSize: isInModal ? 14 : 10,
         rotate: 0,
         interval: 0, // 모든 레이블을 체크하되, 틱 위치에만 표시
         showMinLabel: false,
@@ -1389,7 +1314,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       name: datasets.length > 1 ? 'Vibration' : 'Temperature (°C)', // 여러 데이터셋이면 진동센서
       nameTextStyle: {
         color: '#7d8590',
-        fontSize: isInModal ? 18 : 10
+        fontSize: isInModal ? 14 : 10
       },
       boundaryGap: [0, '10%'], // 상단에 10% 여유 공간
       scale: datasets.length > 1 ? true : false, // 진동센서는 scale 사용
@@ -1411,7 +1336,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       },
       axisLabel: {
         color: '#7d8590',
-        fontSize: isInModal ? 18 : 10,
+        fontSize: isInModal ? 14 : 10,
         formatter: datasets.length > 1 ? '{value}' : '{value}°C' // 진동센서는 단위 없음
       }
     },
@@ -1587,8 +1512,52 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   useEffect(() => {
     if (lineContainerRef.current) {
       containerRef.current = lineContainerRef.current;
+      // 연결 후 모달 체크
+      if (containerRef.current) {
+        let parent = containerRef.current.parentElement;
+        while (parent) {
+          if (parent.classList.contains('panel-modal-content') || parent.classList.contains('panel-modal')) {
+            setIsInModal(true);
+            return;
+          }
+          parent = parent.parentElement;
+        }
+        setIsInModal(false);
+      }
     }
   }, []);
+
+  // 모달 내부에서 마우스 휠 이벤트가 웹페이지 스크롤로 전파되지 않도록 처리
+  useEffect(() => {
+    if (!isInModal || !lineContainerRef.current) return;
+
+    const container = lineContainerRef.current;
+    
+    const handleWheel = (e) => {
+      // ECharts 요소에서 발생한 마우스 휠 이벤트인지 확인
+      const target = e.target;
+      const isEChartsElement = target && (
+        target.tagName === 'CANVAS' || 
+        target.tagName === 'svg' || 
+        target.closest('canvas') ||
+        target.closest('svg')
+      );
+      
+      // ECharts 요소에서 발생한 이벤트인 경우에만 웹페이지 스크롤 방지
+      // 이렇게 하면 ECharts가 이벤트를 처리한 후 preventDefault가 호출됨
+      if (isEChartsElement) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // 버블링 단계에서 이벤트 처리 (ECharts가 먼저 이벤트를 처리한 후 preventDefault 호출)
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [isInModal]);
 
   return (
     <div 
@@ -1602,7 +1571,10 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         ref={chartRef}
         option={echartsOption}
         style={{ width: '100%', height: '100%', minHeight: '150px' }}
-        opts={{ renderer: 'svg' }}
+        opts={{ 
+          renderer: 'svg',
+          preventDefaultMouseMove: isInModal // 모달 내부에서만 마우스 이동 시 preventDefault
+        }}
         notMerge={true}
         lazyUpdate={true}
         onEvents={onEvents}

@@ -28,6 +28,44 @@
   transform: translateY(-50%);
 }
 
+.panel-extension-button {
+  background: transparent;
+  border: 1px solid #464c56;
+  border-radius: 2px;
+  width: 24px;
+  height: 24px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #d8d9da;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  margin-top: 15px;
+}
+
+.panel-extension-button img {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) saturate(100%) invert(90%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%);
+  transition: filter 0.2s ease;
+}
+
+.panel-extension-button:hover {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: #58a6ff;
+  transform: scale(1.1);
+}
+
+.panel-extension-button:hover img {
+  filter: brightness(0) saturate(100%) invert(60%) sepia(100%) saturate(2000%) hue-rotate(180deg) brightness(1) contrast(1);
+}
+
+.panel-extension-button:active {
+  transform: scale(0.95);
+}
+
 .panel-csv-button {
   background: #2d2d33;
   border: 1px solid #464c56;

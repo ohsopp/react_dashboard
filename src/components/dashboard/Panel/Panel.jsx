@@ -3,6 +3,7 @@ import './Panel.css'
 import PanelModal from '../PanelModal/PanelModal'
 import PanelHeader from '../PanelHeader/PanelHeader'
 import CsvDownloadModal from '../CsvDownloadModal/CsvDownloadModal'
+import expandIcon from '../../../assets/icons/expand_icon.png'
 
 // Panel 컴포넌트
 const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChange, id, index, isDragging, onModalOpen, onModalClose, onHide }) => {
@@ -10,9 +11,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 })
   const [isResizing, setIsResizing] = useState(false)
+  const [showExtensionButton, setShowExtensionButton] = useState(false)
   const justFinishedResizing = useRef(false)
   const panelRef = useRef(null)
   const resizeHandleRef = useRef(null)
+  const extensionButtonRef = useRef(null)
 
   useEffect(() => {
     if (panelRef.current) {
@@ -30,22 +33,23 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
     }
   }, [size])
 
-  const handlePanelClick = (e) => {
-    // 카드 패널(통계 패널)은 클릭해도 모달을 열지 않음
+  const handlePanelMouseEnter = () => {
+    // 카드 패널(통계 패널)은 hover해도 확장 버튼 표시 안 함
     if (id && id.startsWith('stat-panel')) {
       return
     }
     
-    // 리사이즈 중이거나 방금 리사이즈가 끝났거나 드래그 중이거나 리사이즈 핸들 클릭 시 모달 열기 방지
-    // 차트 컨테이너나 슬라이더 영역 클릭 시에도 모달 열기 방지
-    if (isResizing || justFinishedResizing.current || isDragging || 
-        e.target === resizeHandleRef.current || 
-        resizeHandleRef.current?.contains(e.target) ||
-        e.target.closest('.chart-container') ||
-        e.target.closest('.echarts-for-react')) {
+    // 리사이즈 중이거나 드래그 중이면 확장 버튼 표시 안 함
+    if (isResizing || isDragging) {
       return
     }
     
+    // 확장 버튼 표시
+    setShowExtensionButton(true)
+  }
+
+  const handleExtensionButtonClick = (e) => {
+    e.stopPropagation()
     if (panelRef.current) {
       const rect = panelRef.current.getBoundingClientRect()
       setPanelSize({
@@ -54,9 +58,15 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
       })
     }
     setIsModalOpen(true)
+    setShowExtensionButton(false)
     if (onModalOpen) {
       onModalOpen()
     }
+  }
+
+  const handlePanelMouseLeave = () => {
+    // 패널에서 마우스가 벗어나면 확장 버튼 숨기기
+    setShowExtensionButton(false)
   }
 
   const handleCloseModal = () => {
@@ -173,10 +183,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
         className={`panel ${className} ${isResizing ? 'resizing' : ''}`}
         data-panel-id={id}
         data-panel-width={size}
-        onClick={handlePanelClick}
         onMouseUp={handlePanelMouseUp}
+        onMouseEnter={handlePanelMouseEnter}
+        onMouseLeave={handlePanelMouseLeave}
         style={{ 
-          cursor: isResizing ? 'ew-resize' : 'grab',
+          cursor: isResizing ? 'ew-resize' : 'default',
           gridColumn: `span ${size}`
         }}
       >
@@ -187,7 +198,19 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
             onHide={onHide}
             onCsvClick={() => setIsCsvModalOpen(true)}
             showCsv={id && !id.startsWith('stat-panel')}
-          />
+          >
+            {/* 확장 버튼을 헤더 내부로 이동 */}
+            {!id?.startsWith('stat-panel') && showExtensionButton && (
+              <button
+                ref={extensionButtonRef}
+                className="panel-extension-button"
+                onClick={handleExtensionButtonClick}
+                title="확장하여 크게 보기"
+              >
+                <img src={expandIcon} alt="확장" />
+              </button>
+            )}
+          </PanelHeader>
         )}
         <div className="panel-content">
           {children}

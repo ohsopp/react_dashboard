@@ -717,7 +717,7 @@ def get_vibration_history():
         from(bucket: "{VIBRATION_INFLUXDB_BUCKET}")
           |> range(start: {start_time_str})
           |> filter(fn: (r) => r["_measurement"] == "vibration")
-          |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest")
+          |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest" or r["_field"] == "temperature")
           |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
           |> yield(name: "mean")
         '''
@@ -732,7 +732,7 @@ def get_vibration_history():
             from(bucket: "{INFLUXDB_BUCKET}")
               |> range(start: {start_time_str})
               |> filter(fn: (r) => r["_measurement"] == "vibration")
-              |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest")
+              |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest" or r["_field"] == "temperature")
               |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
               |> yield(name: "mean")
             '''
@@ -744,6 +744,7 @@ def get_vibration_history():
         a_peak_values = []
         a_rms_values = []
         crest_values = []
+        temperature_values = []
         
         # 각 필드별로 데이터 수집
         for table in result:
@@ -758,6 +759,7 @@ def get_vibration_history():
                     a_peak_values.append(None)
                     a_rms_values.append(None)
                     crest_values.append(None)
+                    temperature_values.append(None)
                 
                 idx = timestamps.index(timestamp_ms)
                 
@@ -769,20 +771,23 @@ def get_vibration_history():
                     a_rms_values[idx] = value
                 elif field == 'crest':
                     crest_values[idx] = value
+                elif field == 'temperature':
+                    temperature_values[idx] = value
         
         # 타임스탬프와 값들을 정렬
-        sorted_data = sorted(zip(timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values))
+        sorted_data = sorted(zip(timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values))
         if sorted_data:
-            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values = zip(*sorted_data)
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = zip(*sorted_data)
         else:
-            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values = [], [], [], [], []
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = [], [], [], [], [], []
         
         return jsonify({
             'timestamps': list(timestamps),
             'v_rms': list(v_rms_values),
             'a_peak': list(a_peak_values),
             'a_rms': list(a_rms_values),
-            'crest': list(crest_values)
+            'crest': list(crest_values),
+            'temperature': list(temperature_values)
         })
     except Exception as e:
         print(f"❌ Error getting vibration history: {e}")

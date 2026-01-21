@@ -1,7 +1,11 @@
 import './PanelHeader.css'
 import eyeIcon from '../../../assets/icons/eye_icon.png'
+import VibrationTemperatureIndicator from './VibrationTemperatureIndicator'
 
-const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, children }) => {
+const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, children, temperature }) => {
+  // Vibration Sensor에만 온도 표시
+  const isVibrationSensor = title === 'Vibration Sensor'
+  
   const handleHideClick = (e) => {
     e.stopPropagation()
     if (onHide) {
@@ -19,6 +23,7 @@ const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, chil
   return (
     <div className="panel-header">
       <div className="panel-header-left">
+        {isVibrationSensor && <VibrationTemperatureIndicator temperature={temperature} />}
         <h2 className="panel-title">{title}</h2>
         {subtitle && <span className="panel-subtitle">{subtitle}</span>}
       </div>

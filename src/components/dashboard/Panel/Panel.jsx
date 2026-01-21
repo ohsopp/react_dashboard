@@ -6,7 +6,7 @@ import CsvDownloadModal from '../CsvDownloadModal/CsvDownloadModal'
 import expandIcon from '../../../assets/icons/expand_icon.png'
 
 // Panel 컴포넌트
-const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChange, id, index, isDragging, onModalOpen, onModalClose, onHide }) => {
+const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChange, id, index, isDragging, onModalOpen, onModalClose, onHide, temperature }) => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCsvModalOpen, setIsCsvModalOpen] = useState(false)
   const [panelSize, setPanelSize] = useState({ width: 0, height: 0 })
@@ -208,6 +208,7 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
             onHide={onHide}
             onCsvClick={() => setIsCsvModalOpen(true)}
             showCsv={id && !id.startsWith('stat-panel')}
+            temperature={temperature}
           >
             {/* 확장 버튼을 헤더 내부로 이동 */}
             {!id?.startsWith('stat-panel') && showExtensionButton && (
@@ -238,6 +239,7 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
         onClose={handleCloseModal}
         title={title}
         subtitle={subtitle}
+        temperature={temperature}
       >
         {children}
       </PanelModal>

@@ -16,7 +16,7 @@ function App() {
   const [selectedRange, setSelectedRange] = useState('1h')
   const [temperature, setTemperature] = useState(null)
   const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
-  const [vibrationHistory, setVibrationHistory] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
+  const [vibrationHistory, setVibrationHistory] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
   const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
   const [ipInfo, setIpInfo] = useState({ currentIp: '--', iolinkIp: '--' })
   const [networkStatus, setNetworkStatus] = useState({
@@ -26,6 +26,7 @@ function App() {
   const eventSourceRef = useRef(null)
   const abortControllerRef = useRef(null) // AbortController 추적
   const selectedRangeRef = useRef(selectedRange) // 최신 selectedRange 추적
+  const vibrationTemperatureRef = useRef(null) // 진동센서 온도값 유지 (깜빡임 방지)
   
   const getSubtitle = () => {
     const rangeMap = {
@@ -547,11 +548,12 @@ function App() {
             v_rms: data.v_rms || [],
             a_peak: data.a_peak || [],
             a_rms: data.a_rms || [],
-            crest: data.crest || []
+            crest: data.crest || [],
+            temperature: data.temperature || []
           })
         } else {
           // 데이터가 없으면 빈 배열로 초기화
-          setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
+          setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
         }
       }
     } catch (error) {
@@ -562,7 +564,7 @@ function App() {
   // selectedRange가 변경되면 진동센서 데이터도 로드
   useEffect(() => {
     // 이전 데이터 완전히 초기화
-    setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [] })
+    setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
     
     // 현재 selectedRange로 데이터 로드
     fetchVibrationHistory(selectedRangeRef.current)
@@ -1169,6 +1171,24 @@ function App() {
           .map((orderIndex, index) => {
             const config = panelConfigs[orderIndex]
             if (!config) return null
+            
+            // Vibration Sensor 패널의 경우에만 최신 온도값 계산 (이전값 유지)
+            let temperatureValue = null
+            if (config.id === 'panel7') {
+              temperatureValue = vibrationTemperatureRef.current // 기본값은 이전값
+              if (vibrationHistory.temperature && vibrationHistory.temperature.length > 0) {
+                // 배열에서 유효한 최신값 찾기 (뒤에서부터)
+                for (let i = vibrationHistory.temperature.length - 1; i >= 0; i--) {
+                  const temp = vibrationHistory.temperature[i]
+                  if (temp !== null && temp !== undefined && !isNaN(temp)) {
+                    temperatureValue = temp
+                    vibrationTemperatureRef.current = temp // ref 업데이트
+                    break
+                  }
+                }
+              }
+            }
+            
             return (
               <Panel 
                 key={config.id}
@@ -1182,6 +1202,7 @@ function App() {
                 onModalOpen={() => setIsModalOpen(true)}
                 onModalClose={() => setIsModalOpen(false)}
                 onHide={() => handleHidePanel(config.id)}
+                temperature={config.id === 'panel7' ? temperatureValue : null}
               >
                 {config.content}
               </Panel>

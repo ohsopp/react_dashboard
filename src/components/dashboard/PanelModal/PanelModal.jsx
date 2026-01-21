@@ -3,7 +3,7 @@ import './PanelModal.css'
 import PanelHeader from '../PanelHeader/PanelHeader'
 
 // PanelModal 컴포넌트 - Panel의 내용을 재사용하는 모달 껍데기
-const PanelModal = ({ isOpen, onClose, title, subtitle, children }) => {
+const PanelModal = ({ isOpen, onClose, title, subtitle, children, temperature }) => {
   const [isReady, setIsReady] = useState(false)
   const contentRef = useRef(null)
 
@@ -51,6 +51,7 @@ const PanelModal = ({ isOpen, onClose, title, subtitle, children }) => {
             <PanelHeader
               title={title}
               subtitle={subtitle}
+              temperature={temperature}
             />
             <button className="panel-modal-close" onClick={onClose}>×</button>
           </div>

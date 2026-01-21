@@ -73,6 +73,22 @@
   font-size: 14px;
 }
 
+/* 모달 내부 온도 표시 크기 증가 */
+.panel-modal-header-wrapper .panel-temperature-indicator {
+  gap: 14px;
+}
+
+.panel-modal-header-wrapper .temperature-status-indicator {
+  width: 16px;
+  height: 16px;
+  box-shadow: 0 0 10px currentColor;
+}
+
+.panel-modal-header-wrapper .temperature-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
 .panel-modal-close {
   background: transparent;
   border: 1px solid #30363d;

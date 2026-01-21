@@ -245,7 +245,7 @@ function App() {
     }
     
     return [
-      { id: 'stat-panel6', title: 'Temperature Statistics', content: (
+      { id: 'stat-panel6', title: 'Temperature Average', content: (
         <div className="stat-panel stat-panel-with-chart">
           <div className="stat-panel-chart-bg">
             {temperatureHistory.values && temperatureHistory.values.length > 0 ? (
@@ -264,7 +264,7 @@ function App() {
           </div>
         </div>
       ) },
-      { id: 'stat-panel7', title: 'Vibration Statistics', content: (
+      { id: 'stat-panel7', title: 'Vibration Average', content: (
         <div className="stat-panel stat-panel-with-chart">
           <div className="stat-panel-chart-bg">
             {vibrationHistory.v_rms && vibrationHistory.v_rms.length > 0 && (

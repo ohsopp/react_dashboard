@@ -132,6 +132,14 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)
     const vibrationColors = ['#667eea', '#f093fb', '#11998e', '#ffa500'];
     
+    // HEX 색상을 RGBA로 변환하는 함수
+    const hexToRgba = (hex, alpha) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
     // datasets가 있으면 여러 시리즈 생성, 없으면 단일 시리즈
     let miniSeries = [];
     let xAxisData = [];
@@ -141,17 +149,32 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       const firstDataset = data.datasets[0];
       xAxisData = firstDataset.data.map((_, i) => i);
       
-      miniSeries = data.datasets.map((ds, index) => ({
-        type: 'line',
-        data: ds.data || [],
-        smooth: true,
-        symbol: 'none',
-        lineStyle: {
-          color: vibrationColors[index] || '#58a6ff',
-          width: 1.5
-        },
-        areaStyle: null
-      }));
+      miniSeries = data.datasets.map((ds, index) => {
+        const color = vibrationColors[index] || '#58a6ff';
+        return {
+          type: 'line',
+          data: ds.data || [],
+          smooth: true,
+          symbol: 'none',
+          lineStyle: {
+            color: color,
+            width: 1.5
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: hexToRgba(color, 0.3) },
+                { offset: 1, color: hexToRgba(color, 0.05) }
+              ]
+            }
+          }
+        };
+      });
     } else {
       // 단일 값인 경우 (온도 등)
       const miniData = data.values || [];

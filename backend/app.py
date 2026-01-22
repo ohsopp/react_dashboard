@@ -8,9 +8,12 @@ import time
 import csv
 import io
 import socket
+import requests
+import re
 from datetime import datetime, timedelta, timezone
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
+from iolink_sensor_info import extract_sensor_info_from_mqtt, get_sensor_info, sensor_device_info, get_iolink_master_info
 try:
     from dateutil import parser
 except ImportError:
@@ -52,6 +55,8 @@ latest_vibration_data = {
     'out2': False,
     'timestamp': None
 }
+
+# 센서 디바이스 정보는 iolink_sensor_info 모듈에서 관리
 
 # 마지막 저장 시간 추적 (샘플링 레이트 제어)
 last_vibration_save_time = 0
@@ -269,6 +274,15 @@ def on_message(client, userdata, msg):
                 payload = data.get('data', {}).get('payload', {})
                 hex_data = None
                 
+                # MQTT 메시지에서 센서 디바이스 정보 추출 시도 (별도 모듈 사용)
+                try:
+                    # 진동센서는 port 1에 연결되어 있음 (로그에서 확인)
+                    extract_sensor_info_from_mqtt(data, payload, port='1')
+                except Exception as e:
+                    print(f"❌ 센서 정보 추출 중 오류: {e}")
+                    import traceback
+                    traceback.print_exc()
+                
                 # 여러 경로에서 pdin 데이터 찾기
                 for path in PDIN_PATHS:
                     hex_data = payload.get(path, {}).get('data')
@@ -468,6 +482,136 @@ def get_ip_info():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'ok', 'message': 'Flask backend is running'})
+
+@app.route('/api/iolink/device/info', methods=['GET'])
+def get_iolink_device_info():
+    """IO-Link Master에서 센서 디바이스 정보 가져오기 (MQTT에서 추출한 정보 우선 사용)"""
+    try:
+        port = request.args.get('port', '2', type=str)  # 기본값: port 2 (진동센서)
+        
+        # 먼저 MQTT에서 추출한 센서 정보 확인
+        global sensor_device_info
+        if sensor_device_info.get('connected') and sensor_device_info.get('last_updated'):
+            # 최근 5분 이내에 업데이트된 정보가 있으면 사용
+            if time.time() - sensor_device_info['last_updated'] < 300:
+                return jsonify({
+                    'port': sensor_device_info.get('port', port),
+                    'connected': True,
+                    'device_id': sensor_device_info.get('device_id'),
+                    'vendor_id': sensor_device_info.get('vendor_id'),
+                    'product_name': sensor_device_info.get('product_name'),
+                    'serial_number': sensor_device_info.get('serial_number'),
+                    'firmware_version': sensor_device_info.get('firmware_version'),
+                    'device_name': sensor_device_info.get('device_name'),
+                    'source': 'mqtt'
+                })
+        
+        # MQTT에서 정보를 못 가져온 경우 REST API 시도
+        base_url = f'http://{IOLINK_IP}'
+        
+        device_info = {
+            'port': port,
+            'connected': False,
+            'device_id': None,
+            'vendor_id': None,
+            'product_name': None,
+            'serial_number': None,
+            'firmware_version': None,
+            'device_name': None,
+            'error': None,
+            'source': 'rest_api'
+        }
+        
+        try:
+            # 웹 인터페이스 HTML에서 센서 정보 파싱
+            response = requests.get(base_url, timeout=3)
+            
+            if response.status_code == 200:
+                html_content = response.text
+                port_num = int(port)
+                
+                # HTML 테이블에서 포트별 센서 정보 파싱
+                # 테이블 구조: Port | Mode | Comm. Mode | MasterCycleTime | Vendor ID | Device ID | Name | Serial
+                pattern = rf'<tr><td>{port_num}</td>.*?<td[^>]*>([^<]*)</td>.*?<td[^>]*>([^<]*)</td>.*?<td[^>]*>([^<]*)</td>.*?<td[^>]*>(.*?)</td>.*?<td[^>]*>(.*?)</td>.*?<td[^>]*>(.*?)</td>.*?<td[^>]*>([^<]*)</td>'
+                match = re.search(pattern, html_content, re.DOTALL)
+                
+                if match:
+                    device_info['connected'] = True
+                    # 매칭된 그룹: Mode(1), Comm. Mode(2), MasterCycleTime(3), Vendor ID(4), Device ID(5), Name(6), Serial(7)
+                    vendor_id = re.sub(r'<[^>]+>', '', match.group(4)).strip()
+                    device_id = re.sub(r'<[^>]+>', '', match.group(5)).strip()
+                    device_name = re.sub(r'<[^>]+>', '', match.group(6)).strip()
+                    serial_number = re.sub(r'<[^>]+>', '', match.group(7)).strip()
+                    
+                    if vendor_id:
+                        device_info['vendor_id'] = vendor_id
+                    if device_id:
+                        device_info['device_id'] = device_id
+                    if device_name:
+                        device_info['device_name'] = device_name
+                        device_info['product_name'] = device_name
+                    if serial_number:
+                        device_info['serial_number'] = serial_number
+                
+                # 센서 디바이스의 펌웨어 버전은 HTML 테이블에 없으므로 제거
+                # (IO-Link Master의 펌웨어 버전과 혼동 방지)
+            
+            # 개별 필드 조회 시도 (위에서 정보를 못 가져온 경우)
+            if not device_info['connected']:
+                field_paths = {
+                    'device_id': [f'/api/v1/devices/{port}/deviceid', f'/api/devices/{port}/deviceid', f'/iolinkmaster/port[{port}]/iolinkdevice/deviceid'],
+                    'vendor_id': [f'/api/v1/devices/{port}/vendorid', f'/api/devices/{port}/vendorid', f'/iolinkmaster/port[{port}]/iolinkdevice/vendorid'],
+                    'product_name': [f'/api/v1/devices/{port}/productname', f'/api/devices/{port}/productname', f'/iolinkmaster/port[{port}]/iolinkdevice/productname'],
+                    'serial_number': [f'/api/v1/devices/{port}/serialnumber', f'/api/devices/{port}/serialnumber', f'/iolinkmaster/port[{port}]/iolinkdevice/serialnumber'],
+                    'firmware_version': [f'/api/v1/devices/{port}/firmwareversion', f'/api/devices/{port}/firmwareversion', f'/iolinkmaster/port[{port}]/iolinkdevice/firmwareversion']
+                }
+                
+                for field, paths in field_paths.items():
+                    for path in paths:
+                        try:
+                            response = requests.get(f'{base_url}{path}', timeout=2)
+                            if response.status_code == 200:
+                                device_info['connected'] = True
+                                value = response.json()
+                                # JSON 응답이 객체인 경우 value 필드 확인
+                                if isinstance(value, dict):
+                                    device_info[field] = value.get('value') or value.get('data') or str(value)
+                                else:
+                                    device_info[field] = str(value)
+                                break
+                        except:
+                            continue
+                            
+        except requests.exceptions.RequestException as e:
+            device_info['error'] = f'IO-Link Master 연결 실패: {str(e)}'
+        except Exception as e:
+            device_info['error'] = f'정보 조회 실패: {str(e)}'
+        
+        return jsonify(device_info)
+    except Exception as e:
+        print(f"❌ IO-Link 디바이스 정보 가져오기 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'port': request.args.get('port', '2'),
+            'connected': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/iolink/master/info', methods=['GET'])
+def get_iolink_master_info_api():
+    """IO-Link Master 자체의 정보 가져오기"""
+    try:
+        master_info = get_iolink_master_info(IOLINK_IP)
+        return jsonify(master_info)
+    except Exception as e:
+        print(f"❌ IO-Link Master 정보 가져오기 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'connected': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/network/status', methods=['GET'])
 def network_status():

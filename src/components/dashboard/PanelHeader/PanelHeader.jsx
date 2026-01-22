@@ -2,7 +2,7 @@ import './PanelHeader.css'
 import eyeIcon from '../../../assets/icons/eye_icon.png'
 import VibrationTemperatureIndicator from './VibrationTemperatureIndicator'
 
-const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, children, temperature }) => {
+const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, showExtension = true, children, temperature }) => {
   // Vibration Sensor에만 온도 표시
   const isVibrationSensor = title === 'Vibration Sensor'
   
@@ -50,7 +50,7 @@ const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, chil
             <img src={eyeIcon} alt="숨기기" />
           </button>
         )}
-        {children}
+        {showExtension && children}
       </div>
     </div>
   )

@@ -58,6 +58,12 @@
   flex-direction: column;
 }
 
+/* Sensor Information 패널은 스크롤 가능하도록 */
+.panel[id="panel8"] .panel-content {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .panel-content::-webkit-scrollbar {
   width: 8px;
 }

@@ -29,6 +29,11 @@
   background: #0a0a0b;
 }
 
+/* Sensor Information 패널은 더 큰 높이 필요 */
+.panel[id="panel8"] {
+  grid-row: span 2; /* 2행 높이 차지 */
+}
+
 .panel-placeholder {
   display: flex;
   align-items: center;

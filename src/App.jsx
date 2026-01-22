@@ -3,6 +3,7 @@ import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 import Chart from './components/dashboard/Chart/Chart'
+import SensorInfo from './components/dashboard/SensorInfo/SensorInfo'
 
 // 일반 패널 그래프 grid 설정 (유지보수 편의를 위해 상수로 분리)
 const DEFAULT_PANEL_GRID = {
@@ -157,53 +158,62 @@ function App() {
       {
         id: 'panel7',
         title: 'Vibration Sensor',
-        content: vibrationHistory.timestamps.length > 0 ? (
-          <Chart
-            key={`vibration-chart-${selectedRange}`}
-            type="line"
-            data={{
-              labels: vibrationHistory.timestamps.map(ts => {
-                const date = new Date(ts)
-                if (selectedRange === '7d') {
-                  return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
-                         date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                } else {
-                  return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                }
-              }),
-              timestamps: vibrationHistory.timestamps,
-              datasets: [
-                {
-                  label: 'v-RMS (mm/s)',
-                  data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined ? val : null)
-                },
-                {
-                  label: 'a-Peak (m/s²)',
-                  data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined ? val : null)
-                },
-                {
-                  label: 'a-RMS (m/s²)',
-                  data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined ? val : null)
-                },
-                {
-                  label: 'Crest',
-                  data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined ? val : null)
-                }
-              ]
-            }}
-            timeRange={selectedRange}
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              dataZoom: [], // 진동센서 그래프는 줌 기능 비활성화
-              grid: DEFAULT_PANEL_GRID
-            }}
-          />
-        ) : (
-          <div className="chart-placeholder">
-            데이터를 불러오는 중...
+        content: (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
+            {vibrationHistory.timestamps.length > 0 ? (
+              <Chart
+                key={`vibration-chart-${selectedRange}`}
+                type="line"
+                data={{
+                  labels: vibrationHistory.timestamps.map(ts => {
+                    const date = new Date(ts)
+                    if (selectedRange === '7d') {
+                      return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
+                             date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                    } else {
+                      return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+                    }
+                  }),
+                  timestamps: vibrationHistory.timestamps,
+                  datasets: [
+                    {
+                      label: 'v-RMS (mm/s)',
+                      data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined ? val : null)
+                    },
+                    {
+                      label: 'a-Peak (m/s²)',
+                      data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined ? val : null)
+                    },
+                    {
+                      label: 'a-RMS (m/s²)',
+                      data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined ? val : null)
+                    },
+                    {
+                      label: 'Crest',
+                      data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined ? val : null)
+                    }
+                  ]
+                }}
+                timeRange={selectedRange}
+                options={{
+                  animation: false,
+                  sampling: 'lttb',
+                  dataZoom: [], // 진동센서 그래프는 줌 기능 비활성화
+                  grid: DEFAULT_PANEL_GRID
+                }}
+              />
+            ) : (
+              <div className="chart-placeholder">
+                데이터를 불러오는 중...
+              </div>
+            )}
           </div>
         )
+      },
+      {
+        id: 'panel8',
+        title: 'Sensor Information',
+        content: <SensorInfo ports={["1", "2"]} showMasterInfo={true} />
       }
       ]
     }, [temperature, temperatureHistory, vibrationHistory, selectedRange, dataZoomRange])
@@ -322,13 +332,14 @@ function App() {
     ]
   }, [temperature, temperatureHistory, vibrationHistory, ipInfo, networkStatus])
 
-  // 기본 레이아웃: panel1, panel6, panel7 (3등분), panel2, panel5 (2등분)
+  // 기본 레이아웃: panel1, panel6, panel7 (3등분), panel2, panel5 (2등분), panel8 (전체)
   const DEFAULT_PANEL_SIZES = {
     panel1: 4,  // 3등분 (12/3 = 4)
     panel2: 6,  // 2등분 (12/2 = 6)
     panel5: 6,  // 2등분 (12/2 = 6)
     panel6: 4,  // 3등분 (12/3 = 4)
-    panel7: 4   // 3등분 (12/3 = 4)
+    panel7: 4,  // 3등분 (12/3 = 4)
+    panel8: 6  // 절반 (12/2 = 6)
   }
   
   const [panelSizes, setPanelSizes] = useState(() => {
@@ -369,9 +380,9 @@ function App() {
   const containerRef = useRef(null)
   const statContainerRef = useRef(null)
   
-  // 기본 패널 순서: panel1 (Temperature History), panel6 (AQI), panel7 (Vibration), panel2 (Pie), panel5 (Bar)
-  // panelConfigs 배열: [panel1(0), panel2(1), panel5(2), panel6(3), panel7(4)]
-  const DEFAULT_PANEL_ORDER = [0, 3, 4, 1, 2] // panel1=0, panel6=3, panel7=4, panel2=1, panel5=2
+  // 기본 패널 순서: panel1 (Temperature History), panel6 (AQI), panel7 (Vibration), panel2 (Pie), panel5 (Bar), panel8 (Sensor Info)
+  // panelConfigs 배열: [panel1(0), panel2(1), panel5(2), panel6(3), panel7(4), panel8(5)]
+  const DEFAULT_PANEL_ORDER = [0, 3, 4, 1, 2, 5] // panel1=0, panel6=3, panel7=4, panel2=1, panel5=2, panel8=5
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // localStorage에서 저장된 순서 불러오기
@@ -387,7 +398,8 @@ function App() {
             'panel2': 1,
             'panel5': 2,
             'panel6': 3,
-            'panel7': 4
+            'panel7': 4,
+            'panel8': 5
           }
           const convertedOrder = savedOrder
             .map(id => orderMap[id])
@@ -395,7 +407,7 @@ function App() {
           
           // 기본 순서와 병합 (없는 패널은 기본 순서 사용)
           if (convertedOrder.length > 0) {
-            const allPanels = [0, 1, 2, 3, 4] // 모든 패널 인덱스
+            const allPanels = [0, 1, 2, 3, 4, 5] // 모든 패널 인덱스
             const missing = allPanels.filter(idx => !convertedOrder.includes(idx))
             return [...convertedOrder, ...missing]
           }
@@ -411,14 +423,15 @@ function App() {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 3, 4, 1, 2]) // 기본 순서: panel1, panel6, panel7, panel2, panel5
+  const panelOrderRef = useRef([0, 3, 4, 1, 2, 5]) // 기본 순서: panel1, panel6, panel7, panel2, panel5, panel8
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 4,
     panel2: 6,
     panel5: 6,
     panel6: 4,
-    panel7: 4
+    panel7: 4,
+    panel8: 12
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,

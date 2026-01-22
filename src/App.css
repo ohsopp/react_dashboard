@@ -29,10 +29,7 @@
   background: #0a0a0b;
 }
 
-/* Sensor Information 패널은 더 큰 높이 필요 */
-.panel[id="panel8"] {
-  grid-row: span 2; /* 2행 높이 차지 */
-}
+/* Sensor Information 패널 높이는 일반 패널과 동일 */
 
 .panel-placeholder {
   display: flex;

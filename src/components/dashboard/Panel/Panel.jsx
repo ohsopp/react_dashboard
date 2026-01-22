@@ -110,7 +110,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
     const gridColumns = 12 // 12분할 그리드
 
     // 허용된 크기 목록 (1/4, 1/3, 2/4, 2/3, 3/4, 1)
-    const allowedSizes = [3, 4, 6, 8, 9, 12] // 12분할 기준
+    // panel8 (Sensor Information)은 최소 8(2/3)이므로 8 이상만 허용
+    const baseAllowedSizes = [3, 4, 6, 8, 9, 12] // 12분할 기준
+    const allowedSizes = id === 'panel8' 
+      ? baseAllowedSizes.filter(size => size >= 8)
+      : baseAllowedSizes
     
     let lastAppliedSize = startSize // 마지막으로 적용된 크기 추적
     let currentSize = startSize // 현재 크기 추적 (비동기 상태 업데이트 대응)
@@ -147,8 +151,10 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
         return Math.abs(curr - targetSize) < Math.abs(prev - targetSize) ? curr : prev
       })
       
-      // 최소 3(1/4), 최대 12(1)로 제한
-      newSize = Math.max(3, Math.min(12, newSize))
+      // panel8 (Sensor Information)은 최소 8(2/3)로 제한, 다른 패널은 최소 3(1/4)
+      const minSize = id === 'panel8' ? 8 : 3
+      // 최대 12(1)로 제한
+      newSize = Math.max(minSize, Math.min(12, newSize))
       
       // 마지막으로 적용된 크기와 다를 때만 업데이트
       // 이렇게 하면 모든 사이즈를 순차적으로 적용할 수 있음

@@ -5,6 +5,18 @@
   color: #d8d9da;
   min-height: fit-content;
   flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.sensor-info-container {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .sensor-info-loading,
@@ -17,26 +29,24 @@
 
 .sensor-info-error {
   color: #f85149;
-  padding: 10px 12px;
+  padding: 6px 10px;
   background: rgba(248, 81, 73, 0.1);
   border-left: 3px solid #f85149;
   border-radius: 2px;
-  margin: 8px 0;
-  font-size: 14px;
+  margin: 6px 0;
+  font-size: 13px;
 }
 
 .sensor-info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 5px 0;
+  padding: 3px 0;
   transition: all 0.2s ease;
 }
 
 .sensor-info-row:hover {
   background: rgba(255, 255, 255, 0.02);
-  margin: 0 -8px;
-  padding: 5px 8px;
   border-radius: 2px;
 }
 
@@ -63,23 +73,59 @@
 }
 
 .sensor-info-section {
-  margin-bottom: 20px;
-  padding: 12px;
+  margin-bottom: 0;
+  padding: 8px 10px;
   background: #161b22;
   border: 1px solid #21262d;
   border-radius: 4px;
+  flex: 1;
+  min-width: 0;
+  height: fit-content;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.sensor-info-section:last-child {
-  margin-bottom: 0;
+.sensor-info-section-content {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.sensor-info-image-wrapper {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid #21262d;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.sensor-info-product-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.sensor-info-details {
+  flex: 1;
+  min-width: 0;
 }
 
 .sensor-info-section-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: #d8d9da;
-  margin-bottom: 10px;
-  padding-bottom: 6px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #2d2d33;
   letter-spacing: 0.3px;
   display: flex;
@@ -132,44 +178,38 @@
   background: rgba(88, 166, 255, 0.2);
 }
 
-/* 포트별 섹션 스타일 */
-.sensor-info-port-section {
-  margin-bottom: 12px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid #21262d;
-  border-radius: 4px;
-  border-left: 3px solid #464c56;
-  transition: all 0.2s ease;
-}
-
-.sensor-info-port-section:hover {
-  border-left-color: #58a6ff;
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.sensor-info-port-section:last-child {
-  margin-bottom: 0;
-}
-
-.sensor-info-port-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #8b949e;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #2d2d33;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sensor-info-port-title::before {
-  content: '';
+/* 센서 정보 섹션 스크롤바 스타일 */
+.sensor-info-section::-webkit-scrollbar {
   width: 6px;
+}
+
+.sensor-info-section::-webkit-scrollbar-track {
+  background: #161b22;
+  border-radius: 3px;
+}
+
+.sensor-info-section::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+
+.sensor-info-section::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+.sensor-info-container::-webkit-scrollbar {
   height: 6px;
-  background: #58a6ff;
-  border-radius: 50%;
+}
+
+.sensor-info-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sensor-info-container::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 3px;
+}
+
+.sensor-info-container::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
 }

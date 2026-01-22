@@ -1283,8 +1283,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       top: isInModal ? 10 : 0, // 모달패널은 10, 일반 모달은 0 (위로 이동)
       left: 'center',
       itemGap: 20,
-      textStyle: {
-        color: '#7d8590',
+        textStyle: {
+          color: '#7d8590',
         fontSize: isInModal ? 14 : 12
       },
       icon: 'rect',
@@ -1431,8 +1431,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 color: ds.backgroundColor || `rgba(${index === 0 ? '102, 126, 234' : index === 1 ? '240, 147, 251' : '17, 153, 142'}, 0.05)`
               }
             ]
-          }
         }
+      }
       };
     }),
     ...options // 추가 옵션 병합 (grid는 이미 위에서 병합됨)

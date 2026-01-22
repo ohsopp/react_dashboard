@@ -1547,9 +1547,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     const sliderAreaHeight = 70; // 슬라이더 영역 높이 (grid.bottom 값과 동일)
     
     // 슬라이더 영역에서 클릭한 경우에만 이벤트 전파 방지
+    // 차트 영역에서는 드래그가 가능하도록 이벤트 전파 허용
     if (clickY >= rect.height - sliderAreaHeight) {
       e.stopPropagation();
     }
+    // 슬라이더 영역이 아닌 경우에는 이벤트를 그대로 전파하여 패널 드래그 가능
   };
 
   const lineContainerRef = useRef(null);
@@ -1612,7 +1614,6 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       className={`chart chart-${type} chart-container ${className}`}
       onMouseDown={handleSliderInteraction}
       onClick={handleSliderInteraction}
-      onDragStart={handleSliderInteraction}
     >
       <ReactECharts
         ref={chartRef}

@@ -954,7 +954,7 @@ function App() {
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           dragClass: 'sortable-drag',
-          filter: '.panel-resize-handle, button, .panel-modal-close, .chart-container',
+          filter: '.panel-resize-handle, button, .panel-modal-close',
           preventOnFilter: false,
           disabled: isModalOpen, // 모달이 열려있으면 드래그 비활성화
           
@@ -1038,7 +1038,7 @@ function App() {
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           dragClass: 'sortable-drag',
-          filter: '.panel-resize-handle, button, .panel-modal-close, .chart-container',
+          filter: '.panel-resize-handle, button, .panel-modal-close',
           preventOnFilter: false,
           disabled: isModalOpen,
           

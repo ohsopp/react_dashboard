@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import './DieProtection.css'
 
-const DieProtection = () => {
+const DieProtection = memo(() => {
   // 더미 데이터 - 16개의 게이지에 대한 진행률 값 (0-100%)
   // 각 게이지는 3개의 중첩된 원형 게이지로 구성 (바깥쪽, 중간, 안쪽)
   const gauges = useMemo(() => {
@@ -142,6 +142,8 @@ const DieProtection = () => {
       </div>
     </div>
   )
-}
+})
+
+DieProtection.displayName = 'DieProtection'
 
 export default DieProtection

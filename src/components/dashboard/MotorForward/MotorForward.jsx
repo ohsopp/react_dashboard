@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import './MotorForward.css'
 
-const MotorForward = () => {
+const MotorForward = memo(() => {
   // 더미 데이터
   const value = 250
   const maxValue = 250
@@ -43,7 +43,7 @@ const MotorForward = () => {
   }
   
   // 호를 따라 그라데이션 적용을 위한 세그먼트 생성 (성능 최적화: 세그먼트 개수 감소)
-  const segmentCount = 60 // 세그먼트 개수 최적화 (150 -> 60으로 감소하여 성능 개선)
+  const segmentCount = 40 // 세그먼트 개수 최적화 (성능 개선을 위해 40개로 감소)
   const segments = useMemo(() => {
     const segs = []
     const segmentAngle = angle / segmentCount
@@ -182,6 +182,8 @@ const MotorForward = () => {
       </div>
     </div>
   )
-}
+})
+
+MotorForward.displayName = 'MotorForward'
 
 export default MotorForward

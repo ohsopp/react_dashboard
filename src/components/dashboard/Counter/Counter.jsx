@@ -1,6 +1,7 @@
+import { memo } from 'react'
 import './Counter.css'
 
-const Counter = () => {
+const Counter = memo(() => {
   // 더미 데이터
   const batches = [
     {
@@ -63,6 +64,8 @@ const Counter = () => {
       ))}
     </div>
   )
-}
+})
+
+Counter.displayName = 'Counter'
 
 export default Counter

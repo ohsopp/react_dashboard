@@ -59,17 +59,9 @@ const DieProtection = () => {
           return (
             <div key={index} className="die-protection-gauge-item">
               <div className="die-protection-gauge">
+                {/* 숫자 텍스트 - outer 게이지 왼쪽 */}
+                <div className="die-protection-gauge-number">{gaugeNumber}</div>
                 <svg viewBox="0 0 80 80" className="die-gauge-svg">
-                  {/* 숫자 텍스트 - 게이지 가운데 */}
-                  <text
-                    x="40"
-                    y="40"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="die-gauge-number-text"
-                  >
-                    {gaugeNumber}
-                  </text>
                   {/* 바깥쪽 배경 원 */}
                   <circle
                     cx="40"

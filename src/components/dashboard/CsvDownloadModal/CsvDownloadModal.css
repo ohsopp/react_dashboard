@@ -14,12 +14,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -29,18 +30,28 @@
   -moz-user-drag: none;
   -o-user-drag: none;
   cursor: default;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .csv-modal {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 12px;
+  background: #1f1f23;
+  border: 1px solid #2d2d33;
+  border-radius: 4px;
   width: 90%;
-  max-width: 600px;
+  max-width: 620px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -51,14 +62,18 @@
   -moz-user-drag: none;
   -o-user-drag: none;
   cursor: default;
-  transform: none !important;
-  scale: 1 !important;
-  transition: none !important;
-  will-change: auto !important;
-  -webkit-transform: none !important;
-  -moz-transform: none !important;
-  -ms-transform: none !important;
-  -o-transform: none !important;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .csv-modal:active,
@@ -73,7 +88,7 @@
   -o-transform: none !important;
 }
 
-.csv-modal * {
+.csv-modal *:not(.csv-modal-close) {
   transform: none !important;
   scale: 1 !important;
   -webkit-transform: none !important;
@@ -82,9 +97,9 @@
   -o-transform: none !important;
 }
 
-.csv-modal *:active,
-.csv-modal *:focus,
-.csv-modal *:focus-within {
+.csv-modal *:not(.csv-modal-close):active,
+.csv-modal *:not(.csv-modal-close):focus,
+.csv-modal *:not(.csv-modal-close):focus-within {
   transform: none !important;
   scale: 1 !important;
   -webkit-transform: none !important;
@@ -93,66 +108,48 @@
   -o-transform: none !important;
 }
 
-/* 닫기 버튼은 회전 허용 */
-.csv-modal-close,
-.csv-modal-close:hover,
-.csv-modal-close:active,
-.csv-modal-close:focus {
-  transform: rotate(0deg) !important;
-  -webkit-transform: rotate(0deg) !important;
-  -moz-transform: rotate(0deg) !important;
-  -ms-transform: rotate(0deg) !important;
-  -o-transform: rotate(0deg) !important;
-}
-
-.csv-modal-close:hover {
-  transform: rotate(90deg) !important;
-  -webkit-transform: rotate(90deg) !important;
-  -moz-transform: rotate(90deg) !important;
-  -ms-transform: rotate(90deg) !important;
-  -o-transform: rotate(90deg) !important;
-}
 
 .csv-modal-header {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 6px 24px;
-  background: #161b22;
+  padding: 20px 24px;
+  background: linear-gradient(180deg, #1f1f23 0%, #1a1a1e 100%);
+  border-bottom: 1px solid #2d2d33;
 }
 
 .csv-modal-instruction {
   margin: 0;
-  padding: 0px 24px 10px 24px;
-  color: #8b949e;
-  font-size: 14px;
+  padding: 14px 24px 16px 24px;
+  color: #8e9196;
+  font-size: 13px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.5;
-  border-bottom: 1px solid #21262d;
-  background: #161b22;
+  line-height: 1.6;
+  border-bottom: 1px solid #2d2d33;
+  background: #1f1f23;
   text-align: left;
 }
 
 .csv-modal-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
-  color: #c9d1d9;
+  color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.01em;
 }
 
 .csv-modal-close {
   position: absolute;
-  top: 15px;
-  right: 15px;
+  top: 16px;
+  right: 16px;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   background: transparent;
-  border: 1px solid #30363d;
-  color: #8b949e;
+  border: 1px solid #464c56;
+  color: #8e9196;
   font-size: 20px;
   cursor: pointer;
   padding: 0;
@@ -162,26 +159,9 @@
   justify-content: center;
   transition: all 0.2s ease;
   line-height: 1;
-  transform: rotate(0deg);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
   text-align: center;
-}
-
-.csv-modal-close > * {
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-
-.csv-modal-close > * {
-  line-height: 1;
-  margin: 0;
-  padding: 0;
-  display: inline-block;
-  vertical-align: middle;
+  transform: rotate(0deg);
 }
 
 .csv-modal-close:hover {
@@ -192,108 +172,155 @@
 }
 
 .csv-modal-content {
-  padding: 25px 50px 30px 50px;
+  padding: 24px;
   overflow-y: auto;
   flex: 1;
   user-select: text;
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+  background: #1f1f23;
+}
+
+/* 스크롤바 스타일 */
+.csv-modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.csv-modal-content::-webkit-scrollbar-track {
+  background: #1f1f23;
+}
+
+.csv-modal-content::-webkit-scrollbar-thumb {
+  background: #464c56;
+  border-radius: 4px;
+}
+
+.csv-modal-content::-webkit-scrollbar-thumb:hover {
+  background: #6e7681;
 }
 
 .csv-quick-select {
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
 
 .csv-section-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #c9d1d9;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 12px;
+  color: #d8d9da;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 14px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.01em;
 }
 
 .csv-section-label svg {
-  color: #8b949e;
+  color: #3274d9;
   flex-shrink: 0;
+  width: 16px;
+  height: 16px;
 }
 
 .csv-quick-buttons {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 
 .csv-quick-button {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 10px 16px;
-  color: #c9d1d9;
+  background: #2d2d33;
+  border: 1px solid #464c56;
+  border-radius: 4px;
+  padding: 10px 14px;
+  color: #d8d9da;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  position: relative;
+  overflow: hidden;
+}
+
+.csv-quick-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transition: left 0.3s ease;
+}
+
+.csv-quick-button:hover::before {
+  left: 100%;
 }
 
 .csv-quick-button:hover {
-  background: #21262d;
-  border-color: #58a6ff;
-  color: #58a6ff;
+  background: #464c56;
+  border-color: #3274d9;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(50, 116, 217, 0.15);
 }
 
 .csv-quick-button.active {
-  background: #1f6feb;
-  border-color: #1f6feb;
+  background: linear-gradient(135deg, #3274d9 0%, #2c6bc7 100%);
+  border-color: #3274d9;
   color: #ffffff;
+  box-shadow: 0 4px 16px rgba(50, 116, 217, 0.3);
+  transform: translateY(-1px);
 }
 
 .csv-time-section {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .csv-time-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
 }
 
 .csv-input-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   align-items: flex-start;
 }
 
 .csv-input-group label {
-  color: #8b949e;
+  color: #8e9196;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  letter-spacing: -0.005em;
   text-align: left;
+  letter-spacing: 0.01em;
 }
 
 .csv-date-input,
 .csv-time-input {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 10px 12px;
-  color: #c9d1d9;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  background: #2d2d33;
+  border: 1px solid #464c56;
+  border-radius: 4px;
+  padding: 10px 14px;
+  color: #ffffff;
+  font-size: 13px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 400;
-  letter-spacing: 0.01em;
   width: 100%;
   text-align: left;
+  box-sizing: border-box;
+}
+
+.csv-date-input:hover,
+.csv-time-input:hover {
+  border-color: #6e7681;
+  background: #35353b;
 }
 
 /* 날짜/시간 입력 필드 - 숫자 부분에 SF Pro/Segoe UI 적용 */
@@ -325,33 +352,49 @@
 .csv-date-input:focus,
 .csv-time-input:focus {
   outline: none;
-  border-color: #58a6ff;
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+  border-color: #3274d9;
+  background: #35353b;
+  box-shadow: 0 0 0 3px rgba(50, 116, 217, 0.1);
 }
 
 .csv-separator {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 16px 0px 0px 0px;
-  color: #30363d;
+  margin: 20px 0;
+  color: #464c56;
+  position: relative;
+}
+
+.csv-separator::before,
+.csv-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #464c56, transparent);
+}
+
+.csv-separator svg {
+  margin: 0 12px;
+  opacity: 0.6;
 }
 
 .csv-selected-range {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  color: #c9d1d9;
+  gap: 12px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #2d2d33 0%, #252529 100%);
+  border: 1px solid #464c56;
+  border-radius: 4px;
+  color: #d8d9da;
   font-size: 13px;
-  margin-top: 20px;
+  margin-top: 24px;
   /* 한글: 시스템 기본, 영어/숫자: Inter */
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* 선택된 범위 내 숫자와 시간 - Inter 또는 SF Pro/Segoe UI */
@@ -363,64 +406,94 @@
 }
 
 .csv-selected-range svg {
-  color: #58a6ff;
+  color: #3274d9;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 4px rgba(50, 116, 217, 0.3));
 }
 
 .csv-modal-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
   padding: 20px 24px;
-  border-top: 1px solid #21262d;
-  background: #161b22;
+  border-top: 1px solid #2d2d33;
+  background: linear-gradient(180deg, #1a1a1e 0%, #1f1f23 100%);
 }
 
 .csv-button {
   padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid transparent;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   letter-spacing: -0.01em;
+  position: relative;
+  overflow: hidden;
 }
 
 .csv-button-cancel {
-  background: #21262d;
-  border-color: #30363d;
-  color: #c9d1d9;
+  background: #2d2d33;
+  border-color: #464c56;
+  color: #d8d9da;
 }
 
 .csv-button-cancel:hover {
-  background: #30363d;
-  border-color: #484f58;
+  background: #464c56;
+  border-color: #6e7681;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .csv-button-download {
-  background: #1f6feb;
-  border-color: #1f6feb;
+  background: linear-gradient(135deg, #3274d9 0%, #2c6bc7 100%);
+  border-color: #3274d9;
   color: #ffffff;
+  box-shadow: 0 4px 12px rgba(50, 116, 217, 0.3);
 }
 
 .csv-button-download:hover:not(:disabled) {
-  background: #2c7edb;
-  border-color: #2c7edb;
+  background: linear-gradient(135deg, #2c6bc7 0%, #2563eb 100%);
+  border-color: #2c6bc7;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(50, 116, 217, 0.4);
+}
+
+.csv-button-download:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(50, 116, 217, 0.3);
 }
 
 .csv-button-download:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .csv-selected-range-text-wrapper {
-  padding-left: 10px;
+  padding-left: 4px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
+  flex: 1;
+}
+
+.csv-selected-range-text-wrapper > div:first-child {
+  color: #8e9196;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.csv-selected-range-text-wrapper > div:last-child {
+  color: #ffffff;
+  font-weight: 500;
 }
 

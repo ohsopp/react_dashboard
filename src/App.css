@@ -29,6 +29,11 @@
   background: #0a0a0b;
 }
 
+/* Motor Forward 패널: 세로 2칸 차지 */
+#panel9 {
+  grid-row: span 2;
+}
+
 /* Sensor Information 패널 높이는 일반 패널과 동일 */
 
 .panel-placeholder {

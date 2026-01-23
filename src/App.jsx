@@ -182,7 +182,7 @@ function App() {
       },
       {
         id: 'panel7',
-        title: 'Vibration Sensor',
+        title: 'Vibration History',
         content: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
             {vibrationHistory.timestamps.length > 0 ? (

@@ -1366,8 +1366,11 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
       type: 'value',
       name: datasets.length > 1 ? 'Vibration' : 'Temperature (°C)', // 여러 데이터셋이면 진동센서
       nameTextStyle: {
-        color: '#7d8590',
-        fontSize: isInModal ? 14 : 10
+        color: options?.yAxis?.nameTextStyle?.color || '#7d8590',
+        fontSize: options?.yAxis?.nameTextStyle?.fontSize !== undefined 
+          ? options.yAxis.nameTextStyle.fontSize 
+          : (isInModal ? 14 : 10),
+        ...(options?.yAxis?.nameTextStyle || {})
       },
       boundaryGap: [0, '10%'], // 상단에 10% 여유 공간
       scale: datasets.length > 1 ? true : false, // 진동센서는 scale 사용
@@ -1384,14 +1387,22 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         lineStyle: {
           color: 'rgba(214, 223, 233, 0.2)',
           width: 1,
-          type: 'solid'
-        }
+          type: 'solid',
+          ...(options?.yAxis?.splitLine?.lineStyle || {})
+        },
+        ...(options?.yAxis?.splitLine ? Object.fromEntries(
+          Object.entries(options.yAxis.splitLine).filter(([key]) => key !== 'lineStyle')
+        ) : {})
       },
       axisLabel: {
-        color: '#7d8590',
-        fontSize: isInModal ? 14 : 10,
-        formatter: datasets.length > 1 ? '{value}' : '{value}°C' // 진동센서는 단위 없음
-      }
+        color: options?.yAxis?.axisLabel?.color || '#7d8590',
+        fontSize: options?.yAxis?.axisLabel?.fontSize !== undefined 
+          ? options.yAxis.axisLabel.fontSize 
+          : (isInModal ? 14 : 10),
+        formatter: datasets.length > 1 ? '{value}' : '{value}°C', // 진동센서는 단위 없음
+        ...(options?.yAxis?.axisLabel || {})
+      },
+      ...(options?.yAxis || {})
     },
     series: datasets.map((ds, index) => {
       // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)

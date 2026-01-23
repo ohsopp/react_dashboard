@@ -267,7 +267,24 @@ function App() {
               animation: false,
               sampling: 'lttb',
               grid: DEFAULT_PANEL_GRID,
-              yAxis: { min: 0, max: 50, name: 'Turbidity (NTU)' }
+              yAxis: { 
+                min: 0, 
+                max: 50, 
+                name: 'Turbidity (NTU)',
+                nameTextStyle: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                axisLabel: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                splitLine: {
+                  lineStyle: {
+                    color: 'rgba(180, 185, 190, 0.3)'
+                  }
+                }
+              }
             }}
           />
         )
@@ -284,7 +301,24 @@ function App() {
               animation: false,
               sampling: 'lttb',
               grid: DEFAULT_PANEL_GRID,
-              yAxis: { min: 0, max: 80, name: 'Flow (L/min)' }
+              yAxis: { 
+                min: 0, 
+                max: 80, 
+                name: 'Flow (L/min)',
+                nameTextStyle: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                axisLabel: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                splitLine: {
+                  lineStyle: {
+                    color: 'rgba(180, 185, 190, 0.3)'
+                  }
+                }
+              }
             }}
           />
         )
@@ -301,7 +335,24 @@ function App() {
               animation: false,
               sampling: 'lttb',
               grid: DEFAULT_PANEL_GRID,
-              yAxis: { min: 0, max: 200, name: 'Level (mm)' }
+              yAxis: { 
+                min: 0, 
+                max: 200, 
+                name: 'Level (mm)',
+                nameTextStyle: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                axisLabel: {
+                  fontSize: 10,
+                  color: '#9ca3af'
+                },
+                splitLine: {
+                  lineStyle: {
+                    color: 'rgba(180, 185, 190, 0.3)'
+                  }
+                }
+              }
             }}
           />
         )

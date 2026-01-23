@@ -31,6 +31,9 @@ const DieProtection = () => {
         {gauges.map((gauge, index) => {
           const gaugeNumber = index + 1
           
+          // 모든 값이 0인지 확인
+          const allZero = gauge.outer === 0 && gauge.middle === 0 && gauge.inner === 0
+          
           // 각 원형 게이지의 각도 계산
           const outerAngle = (gauge.outer / 100) * 270
           const middleAngle = (gauge.middle / 100) * 270
@@ -55,9 +58,18 @@ const DieProtection = () => {
           
           return (
             <div key={index} className="die-protection-gauge-item">
-              <div className="die-protection-gauge-number">{gaugeNumber}</div>
               <div className="die-protection-gauge">
                 <svg viewBox="0 0 80 80" className="die-gauge-svg">
+                  {/* 숫자 텍스트 - 게이지 가운데 */}
+                  <text
+                    x="40"
+                    y="40"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="die-gauge-number-text"
+                  >
+                    {gaugeNumber}
+                  </text>
                   {/* 바깥쪽 배경 원 */}
                   <circle
                     cx="40"
@@ -69,27 +81,31 @@ const DieProtection = () => {
                     className="die-gauge-background"
                   />
                   
-                  {/* 중간 배경 원 */}
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="22"
-                    fill="none"
-                    stroke="#2d2d33"
-                    strokeWidth="7"
-                    className="die-gauge-background"
-                  />
+                  {/* 중간 배경 원 - 모든 값이 0이면 숨김 */}
+                  {!allZero && (
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="22"
+                      fill="none"
+                      stroke="#2d2d33"
+                      strokeWidth="7"
+                      className="die-gauge-background"
+                    />
+                  )}
                   
-                  {/* 안쪽 배경 원 */}
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="12"
-                    fill="none"
-                    stroke="#2d2d33"
-                    strokeWidth="7"
-                    className="die-gauge-background"
-                  />
+                  {/* 안쪽 배경 원 - 모든 값이 0이면 숨김 */}
+                  {!allZero && (
+                    <circle
+                      cx="40"
+                      cy="40"
+                      r="12"
+                      fill="none"
+                      stroke="#2d2d33"
+                      strokeWidth="7"
+                      className="die-gauge-background"
+                    />
+                  )}
                   
                   {/* 바깥쪽 진행률 호 */}
                   {gauge.outer > 0 && (

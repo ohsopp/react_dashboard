@@ -37,6 +37,7 @@
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 16px;
+  row-gap: 24px;
   flex: 1;
   align-items: center;
   justify-items: center;
@@ -48,6 +49,7 @@
   align-items: center;
   gap: 4px;
   width: 100%;
+  margin-top: 0px; /* 글자 크기(10px)만큼 위로 이동 */
 }
 
 /* 아랫줄(9~16번) 그래프만 위로 조금 당김 */
@@ -62,6 +64,14 @@
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', sans-serif;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+
+.die-gauge-number-text {
+  font-size: 10px;
+  font-weight: 600;
+  fill: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .die-protection-gauge {

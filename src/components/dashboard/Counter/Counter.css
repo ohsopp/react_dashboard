@@ -80,7 +80,7 @@
   height: 100%;
   background: linear-gradient(90deg, #58a6ff 0%, #6eb3ff 100%);
   border-radius: 4px;
-  transition: width 0.3s ease;
+  transition: width 0.5s ease-out;
   box-shadow: 0 0 8px rgba(88, 166, 255, 0.4);
 }
 
@@ -92,4 +92,5 @@
   text-align: right;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Inter', 'Roboto', sans-serif;
   font-variant-numeric: tabular-nums;
+  transition: color 0.3s ease;
 }

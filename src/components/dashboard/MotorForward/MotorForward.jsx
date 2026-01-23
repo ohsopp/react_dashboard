@@ -1,11 +1,26 @@
-import { useMemo, memo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import './MotorForward.css'
 
 const MotorForward = memo(() => {
-  // 더미 데이터
-  const value = 250
+  // 더미 데이터 - state로 관리하여 주기적으로 변경
+  const [value, setValue] = useState(250)
   const maxValue = 250
   const unit = 'Inch'
+  
+  // 일정 시간마다 값 조금씩 변경 (2초마다)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setValue(prev => {
+        // 현재 값에서 ±5 범위로 랜덤하게 변경
+        const change = (Math.random() - 0.5) * 10 // -5 ~ +5
+        const newValue = prev + change
+        // 최소 0, 최대 maxValue로 제한
+        return Math.max(0, Math.min(maxValue, Math.round(newValue)))
+      })
+    }, 2000) // 2초마다
+    
+    return () => clearInterval(interval)
+  }, [maxValue])
   
   // 게이지 각도 계산 (상단에서 시작, 시계방향으로 315도 - 10시 반 방향까지)
   const maxAngle = 315 // 10시 반 방향 (12시에서 시계방향으로 315도)

@@ -88,15 +88,15 @@
 }
 
 .die-gauge-outer {
-  filter: drop-shadow(0 0 2px rgba(151, 193, 237, 0.35));
+  filter: drop-shadow(0 0 2px #fae500);
 }
 
 .die-gauge-middle {
-  filter: drop-shadow(0 0 2px rgba(62, 114, 226, 0.5));
+  filter: drop-shadow(0 0 2px #7c3aed);
 }
 
 .die-gauge-inner {
-  filter: drop-shadow(0 0 2px rgba(106, 36, 228, 0.6));
+  filter: drop-shadow(0 0 2px #ff2627);
 }
 
 /* 반응형: 작은 화면에서는 4열로 */

@@ -49,9 +49,9 @@ const DieProtection = () => {
           }
           
           // 색상: 바깥·중간 파란색, 안쪽 찐한 보라색
-          const outerColor = '#6eb3ff'      // 바깥쪽: 연한 파란색
-          const middleColor = '#2563eb'     // 중간: 진한 파란색
-          const innerColor = '#7c3aed'      // 안쪽: 찐한 보라색
+          const outerColor = '#fae500'      // 바깥쪽
+          const middleColor = '#7c3aed'     // 중간
+          const innerColor = '#ff2627'      // 안쪽
           
           return (
             <div key={index} className="die-protection-gauge-item">

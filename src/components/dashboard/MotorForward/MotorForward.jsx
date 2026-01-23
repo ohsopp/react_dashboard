@@ -42,8 +42,8 @@ const MotorForward = () => {
     return `rgb(${colors[colors.length - 1].r}, ${colors[colors.length - 1].g}, ${colors[colors.length - 1].b})`
   }
   
-  // 호를 따라 그라데이션 적용을 위한 세그먼트 생성 (겹침으로 자연스러운 연결)
-  const segmentCount = 150 // 세그먼트 개수 증가로 더 부드러운 그라데이션
+  // 호를 따라 그라데이션 적용을 위한 세그먼트 생성 (성능 최적화: 세그먼트 개수 감소)
+  const segmentCount = 60 // 세그먼트 개수 최적화 (150 -> 60으로 감소하여 성능 개선)
   const segments = useMemo(() => {
     const segs = []
     const segmentAngle = angle / segmentCount
@@ -53,7 +53,7 @@ const MotorForward = () => {
       const segmentValue = (startAngle / maxAngle) * maxValue
       const segmentColor = getColorForValue(segmentValue)
       // 세그먼트를 약간 겹치게 하여 연결 끊김 방지
-      const overlap = 0.3 // 겹침 각도
+      const overlap = 0.5 // 겹침 각도 약간 증가로 자연스러운 연결 유지
       segs.push({ 
         startAngle: i === 0 ? 0 : startAngle - overlap, // 첫 번째 세그먼트는 정확히 0에서 시작
         endAngle: i === segmentCount - 1 ? endAngle : endAngle + overlap, 
@@ -132,14 +132,19 @@ const MotorForward = () => {
             />
           ))}
           
-          {/* 눈금 표시 */}
+          {/* 눈금 표시 - 게이지 외부에 배치 */}
           {scaleMarks.map((mark, index) => {
             // 12시 방향에서 시작하도록 -90도 오프셋 적용
             const radian = ((mark.angle - 90) * Math.PI) / 180
-            const x1 = centerX + 85 * Math.cos(radian)
-            const y1 = centerY + 85 * Math.sin(radian)
-            const x2 = centerX + 95 * Math.cos(radian)
-            const y2 = centerY + 95 * Math.sin(radian)
+            // 게이지 외부 가장자리 (반지름 95 + strokeWidth/2 = 95 + 11 = 106)
+            const gaugeOuterEdge = radius + 11
+            // 눈금 시작점: 게이지 외부 가장자리
+            const x1 = centerX + gaugeOuterEdge * Math.cos(radian)
+            const y1 = centerY + gaugeOuterEdge * Math.sin(radian)
+            // 눈금 끝점: 게이지 외부 가장자리 + 눈금 길이
+            const markLength = 8
+            const x2 = centerX + (gaugeOuterEdge + markLength) * Math.cos(radian)
+            const y2 = centerY + (gaugeOuterEdge + markLength) * Math.sin(radian)
             
             return (
               <g key={index}>
@@ -152,10 +157,10 @@ const MotorForward = () => {
                   strokeWidth="2"
                   className="gauge-mark"
                 />
-                {/* 눈금 값 표시 */}
+                {/* 눈금 값 표시 - 눈금 끝점보다 더 밖으로 */}
                 <text
-                  x={centerX + 105 * Math.cos(radian)}
-                  y={centerY + 105 * Math.sin(radian)}
+                  x={centerX + (gaugeOuterEdge + markLength + 8) * Math.cos(radian)}
+                  y={centerY + (gaugeOuterEdge + markLength + 8) * Math.sin(radian)}
                   fill="#8e9196"
                   fontSize="8"
                   textAnchor="middle"

@@ -7,10 +7,10 @@ const DieProtection = () => {
   const gauges = useMemo(() => {
     return [
       { outer: 110, middle: 0, inner: 85 },  // 1
-      { outer: 67, middle: 54, inner: 41 },    // 2
+      { outer: 0, middle: 54, inner: 41 },    // 2
       { outer: 50, middle: 38, inner: 26 },    // 3
       { outer: 92, middle: 75, inner: 58 },    // 4
-      { outer: 75, middle: 61, inner: 47 },    // 5
+      { outer: 7, middle: 61, inner: 47 },    // 5
       { outer: 65, middle: 52, inner: 39 },    // 6
       { outer: 8, middle: 6, inner: 4 },       // 7
       { outer: 78, middle: 63, inner: 48 },    // 8

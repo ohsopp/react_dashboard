@@ -1295,18 +1295,23 @@ function App() {
         breadcrumbItems={['Home', 'Dashboards', 'Sensor Data']}
       />
       
-      <DataRangeSelector
-        selected={selectedRange}
-        onSelect={setSelectedRange}
-        onEdit={handleEdit}
-      />
-      
-      {/* 통계 패널 그리드 (상단 작은 카드) */}
-      <div 
-        ref={statContainerRef}
-        className="stats-container"
-        id="stats-container"
-      >
+      <div className="app-content-wrapper">
+        <div className="app-sidebar">
+          <div className="app-sidebar-text">사이드바</div>
+        </div>
+        <div className="app-main">
+          <DataRangeSelector
+            selected={selectedRange}
+            onSelect={setSelectedRange}
+            onEdit={handleEdit}
+          />
+          
+          {/* 통계 패널 그리드 (상단 작은 카드) */}
+          <div 
+            ref={statContainerRef}
+            className="stats-container"
+            id="stats-container"
+          >
         {statPanelOrder
           .filter(orderIndex => statPanelConfigs[orderIndex] && !hiddenStatPanels.includes(statPanelConfigs[orderIndex].id))
           .map((orderIndex, index) => {
@@ -1331,14 +1336,14 @@ function App() {
               </Panel>
             )
           })}
-      </div>
-      
-      {/* 메인 패널 그리드 */}
-      <div 
-        ref={containerRef}
-        className="dashboard-container"
-        id="dashboard-container"
-      >
+          </div>
+          
+          {/* 메인 패널 그리드 */}
+          <div 
+            ref={containerRef}
+            className="dashboard-container"
+            id="dashboard-container"
+          >
         {panelOrder
           .filter(orderIndex => panelConfigs[orderIndex] && !hiddenPanels.includes(panelConfigs[orderIndex].id))
           .map((orderIndex, index) => {
@@ -1381,22 +1386,24 @@ function App() {
               </Panel>
             )
           })}
+          </div>
+          
+          <EditModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            hiddenPanels={[...hiddenPanels, ...hiddenStatPanels]}
+            panelConfigs={[...panelConfigs, ...statPanelConfigs]}
+            onShowPanel={(panelId) => {
+              // 통계 패널인지 확인
+              if (panelId.startsWith('stat-panel')) {
+                handleShowStatPanel(panelId)
+              } else {
+                handleShowPanel(panelId)
+              }
+            }}
+          />
+        </div>
       </div>
-      
-      <EditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        hiddenPanels={[...hiddenPanels, ...hiddenStatPanels]}
-        panelConfigs={[...panelConfigs, ...statPanelConfigs]}
-        onShowPanel={(panelId) => {
-          // 통계 패널인지 확인
-          if (panelId.startsWith('stat-panel')) {
-            handleShowStatPanel(panelId)
-          } else {
-            handleShowPanel(panelId)
-          }
-        }}
-      />
     </div>
   )
 }

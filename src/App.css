@@ -2,6 +2,44 @@
   min-height: 100vh;
   background-color: #0a0a0b;
   color: #d8d9da;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-content-wrapper {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-sidebar {
+  width: 64px;
+  min-width: 64px;
+  background-color: #1f1f23;
+  border-right: 1px solid #2d2d33;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 8px;
+}
+
+.app-sidebar-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  color: #8e9196;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  margin-top: 20px;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 /* 통계 패널 그리드 (상단 작은 카드) */

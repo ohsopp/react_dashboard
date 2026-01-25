@@ -52,9 +52,9 @@ const DieProtection = memo(() => {
           }
           
           // 색상: 바깥·중간 파란색, 안쪽 찐한 보라색
-          const outerColor = '#fae500'      // 바깥쪽
-          const middleColor = '#7c3aed'     // 중간
-          const innerColor = '#ff2627'      // 안쪽
+          const outerColor = '#bfbfff'      // 바깥쪽
+          const middleColor = '#7879ff'     // 중간
+          const innerColor = '#1f1fff'      // 안쪽
           
           return (
             <div key={index} className="die-protection-gauge-item">

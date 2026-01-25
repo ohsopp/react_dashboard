@@ -96,18 +96,6 @@
   transition: stroke-dasharray 0.3s ease;
 }
 
-.die-gauge-outer {
-  filter: drop-shadow(0 0 2px #fae500);
-}
-
-.die-gauge-middle {
-  filter: drop-shadow(0 0 2px #7c3aed);
-}
-
-.die-gauge-inner {
-  filter: drop-shadow(0 0 2px #ff2627);
-}
-
 /* 반응형: 작은 화면에서는 4열로 */
 @media (max-width: 1200px) {
   .die-protection-grid {

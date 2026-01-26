@@ -4,7 +4,7 @@ import VibrationTemperatureIndicator from './VibrationTemperatureIndicator'
 
 const PanelHeader = ({ title, subtitle, onHide, onCsvClick, showCsv = true, showExtension = true, children, temperature }) => {
   // Vibration Sensor에만 온도 표시
-  const isVibrationSensor = title === 'Vibration Sensor'
+  const isVibrationSensor = title === 'Vibration Sensor' || title === 'Vibration History'
   
   const handleHideClick = (e) => {
     e.stopPropagation()

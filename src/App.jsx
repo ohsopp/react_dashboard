@@ -159,11 +159,12 @@ function App() {
   const [mainPanelSizes, setMainPanelSizes] = useState({
     'main-panel1': 4,
     'main-panel2': 4,
-    'main-panel3': 4
+    'main-panel3': 4,
+    'main-panel4': 4
   })
   
   // Main 패널 순서 관리
-  const [mainPanelOrder, setMainPanelOrder] = useState([0, 1, 2])
+  const [mainPanelOrder, setMainPanelOrder] = useState([0, 1, 2, 3])
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
     'stat-panel7': 3,

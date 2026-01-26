@@ -15,4 +15,10 @@
   grid-row: span 2;
   min-height: 350px;
 }
+
+/* Machine #1 패널만 충분한 높이 확보 */
+#main-panel4 {
+  grid-row: span 2;
+  min-height: 400px;
+}
 ㄴ

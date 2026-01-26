@@ -4,6 +4,7 @@ import { Panel, DataRangeSelector } from '../../index'
 import MotorForward from '../MotorForward/MotorForward'
 import Counter from '../Counter/Counter'
 import DieProtection from '../DieProtection/DieProtection'
+import MachineStatus from '../MachineStatus/MachineStatus'
 import './MainPage.css'
 
 const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit }) => {
@@ -26,6 +27,11 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
       id: 'main-panel3',
       title: 'Counter',
       content: <Counter />
+    },
+    {
+      id: 'main-panel4',
+      title: 'Machine #1',
+      content: <MachineStatus />
     }
   ], [])
 

@@ -4,11 +4,12 @@ import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 import MainPage from './components/dashboard/MainPage/MainPage'
 import ShiftReport from './components/dashboard/ShiftReport/ShiftReport'
+import SensorInformation from './components/dashboard/SensorInformation/SensorInformation'
 import { useSensorData } from './hooks/useSensorData'
 import { usePanelConfigs } from './hooks/usePanelConfigs'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('main') // 'main', 'sensor', or 'chart'
+  const [activeTab, setActiveTab] = useState('main') // 'main', 'sensor', or 'sensorInfo'
   const [selectedRange, setSelectedRange] = useState('1h')
   
   // Machine #1 공통 데이터 상태
@@ -184,7 +185,20 @@ function App() {
   })
   
   // Main 패널 순서 관리
-  const [mainPanelOrder, setMainPanelOrder] = useState([0, 1, 2, 3])
+  // 기본 순서: Machine #1(3) 왼쪽, Motor Forward(0) 가운데, Die Protection(1)과 Counter(2) 오른쪽
+  const [mainPanelOrder, setMainPanelOrder] = useState(() => {
+    // localStorage에서 저장된 순서 불러오기
+    try {
+      const saved = localStorage.getItem('main-panel-order')
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (e) {
+      console.error('메인 패널 순서 로드 실패:', e)
+    }
+    // 기본 순서: [Machine #1, Motor Forward, Die Protection, Counter]
+    return [3, 0, 1, 2]
+  })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
     'stat-panel7': 3,
@@ -208,12 +222,18 @@ function App() {
     try {
       const saved = localStorage.getItem('hidden-panels')
       if (saved) {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        // panel8이 없으면 기본적으로 숨김 처리 (센서 정보는 사이드바로 이동)
+        if (!parsed.includes('panel8')) {
+          parsed.push('panel8')
+        }
+        return parsed
       }
     } catch (e) {
       console.error('숨겨진 패널 로드 실패:', e)
     }
-    return []
+    // 기본값: panel8은 사이드바로 이동했으므로 숨김
+    return ['panel8']
   })
   
   const [hiddenStatPanels, setHiddenStatPanels] = useState(() => {
@@ -743,6 +763,17 @@ function App() {
               <path d="M18 7l-5 5-4-4-3 3"></path>
             </svg>
           </div>
+          <div 
+            className={`sidebar-tab ${activeTab === 'sensorInfo' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sensorInfo')}
+            title="Sensor Information"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
+            </svg>
+          </div>
         </div>
         <div className="app-main">
           {activeTab === 'main' ? (
@@ -763,6 +794,8 @@ function App() {
               machineData={machineData}
               setMachineData={setMachineData}
             />
+          ) : activeTab === 'sensorInfo' ? (
+            <SensorInformation />
           ) : (
             <>
               <DataRangeSelector

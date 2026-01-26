@@ -86,6 +86,12 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
             // 패널 순서 업데이트
             if (onPanelOrderChange) {
               onPanelOrderChange(newOrder)
+              // localStorage에 저장
+              try {
+                localStorage.setItem('main-panel-order', JSON.stringify(newOrder))
+              } catch (e) {
+                console.error('메인 패널 순서 저장 실패:', e)
+              }
             }
             
             // 드래그 플래그 해제

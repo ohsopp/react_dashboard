@@ -81,6 +81,38 @@ const ShiftReport = memo(({ machineData }) => {
     oee: machineData?.oee || machineData?.productionEfficiency || 65
   }
 
+  // 성능 지표 색상 코딩 함수
+  const getPerformanceClass = (value) => {
+    if (value >= 85) return 'excellent'
+    if (value >= 70) return 'good'
+    if (value >= 50) return 'warning'
+    return 'danger'
+  }
+
+  // 성능 지표에 따른 색상 반환 함수
+  const getPerformanceColor = (value) => {
+    if (value >= 85) return '#10b981' // 초록색 (excellent)
+    if (value >= 70) return '#3b82f6' // 파란색 (good)
+    if (value >= 50) return '#f59e0b' // 노란색 (warning)
+    return '#ef4444' // 빨간색 (danger)
+  }
+
+  // 성능 지표 컴포넌트
+  const PerformanceValue = ({ value }) => {
+    const performanceClass = getPerformanceClass(value)
+    return (
+      <span className={`performance-value ${performanceClass}`}>
+        {value}%
+        <div className="performance-gauge">
+          <div 
+            className="performance-gauge-fill" 
+            style={{ width: `${value}%` }}
+          />
+        </div>
+      </span>
+    )
+  }
+
   // ECharts Performance Overview 바 그래프 옵션
   const performanceBarData = [
     { value: performanceData.quality, name: 'Quality', itemStyle: { color: '#8b5cf6' } }, // 보라색
@@ -293,6 +325,7 @@ const ShiftReport = memo(({ machineData }) => {
     { name: 'No Blanks FGL', duration: 0 }
   ]
 
+
   // ECharts 바 그래프 옵션 (dataset 사용)
   const errorsBarOption = {
     dataset: {
@@ -356,13 +389,14 @@ const ShiftReport = memo(({ machineData }) => {
       top: 'bottom',
       min: 0,
       max: 100,
-      text: ['High Score', 'Low Score'],
+      text: ['High Duration', 'Low Duration'],
       textStyle: {
         color: '#9ca3af',
         fontSize: 11
       },
       dimension: 0,
       inRange: {
+        // 원래 그라데이션 색상
         color: ['#3b82f6', '#8b5cf6', '#ec4899']
       },
       itemWidth: 12,
@@ -434,10 +468,10 @@ const ShiftReport = memo(({ machineData }) => {
         radius: '50%',
         center: ['50%', '50%'],
         data: [
-          { value: productionStatus.production, name: 'Production', itemStyle: { color: '#60a5fa' } },
-          { value: productionStatus.scheduledDowntime, name: 'Scheduled Downtime', itemStyle: { color: '#1e40af' } },
-          { value: productionStatus.unscheduledDowntime, name: 'Unscheduled Downtime', itemStyle: { color: '#6b7280' } },
-          { value: productionStatus.standbyTime, name: 'Standby Time', itemStyle: { color: '#ffffff' } }
+          { value: productionStatus.production, name: 'Production', itemStyle: { color: '#10b981' } }, // 초록색 - 생산 중 (좋음)
+          { value: productionStatus.scheduledDowntime, name: 'Scheduled Downtime', itemStyle: { color: '#3b82f6' } }, // 파란색 - 계획된 다운타임 (정상)
+          { value: productionStatus.unscheduledDowntime, name: 'Unscheduled Downtime', itemStyle: { color: '#ef4444' } }, // 빨간색 - 계획되지 않은 다운타임 (나쁨)
+          { value: productionStatus.standbyTime, name: 'Standby Time', itemStyle: { color: '#6b7280' } } // 회색 - 대기 시간 (중립)
         ],
         emphasis: {
           itemStyle: {
@@ -467,7 +501,12 @@ const ShiftReport = memo(({ machineData }) => {
       <div className="shift-report-grid">
         {/* Performance Overview */}
         <div className="performance-overview">
-          <h3 className="section-title">Performance Overview</h3>
+          <h3 className="section-title">
+            <svg className="section-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Performance Overview
+          </h3>
           <div className="performance-chart">
             <ReactECharts 
               option={performanceBarOption} 
@@ -479,7 +518,12 @@ const ShiftReport = memo(({ machineData }) => {
 
         {/* Production Status */}
         <div className="production-status">
-          <h3 className="section-title">Production Status</h3>
+          <h3 className="section-title">
+            <svg className="section-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Production Status
+          </h3>
           <div className="pie-chart-container">
             <ReactECharts 
               option={pieChartOption} 
@@ -491,7 +535,12 @@ const ShiftReport = memo(({ machineData }) => {
 
         {/* Shift Summary */}
         <div className="shift-summary">
-          <h3 className="section-title">{shiftSummary.shift}</h3>
+          <h3 className="section-title">
+            <svg className="section-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {shiftSummary.shift}
+          </h3>
           <table className="summary-table">
             <thead>
               <tr>
@@ -505,9 +554,9 @@ const ShiftReport = memo(({ machineData }) => {
             </thead>
             <tbody>
               <tr>
-                <td>{shiftSummary.actual.availability}%</td>
-                <td>{shiftSummary.actual.performance}%</td>
-                <td>{shiftSummary.actual.quality}%</td>
+                <td><PerformanceValue value={shiftSummary.actual.availability} /></td>
+                <td><PerformanceValue value={shiftSummary.actual.performance} /></td>
+                <td><PerformanceValue value={shiftSummary.actual.quality} /></td>
                 <td>{shiftSummary.actual.mtbf}</td>
                 <td>{shiftSummary.actual.mttr}</td>
                 <td>
@@ -518,9 +567,9 @@ const ShiftReport = memo(({ machineData }) => {
                 </td>
               </tr>
               <tr className="average-row">
-                <td>{shiftSummary.average.availability}%</td>
-                <td>{shiftSummary.average.performance}%</td>
-                <td>{shiftSummary.average.quality}%</td>
+                <td><PerformanceValue value={shiftSummary.average.availability} /></td>
+                <td><PerformanceValue value={shiftSummary.average.performance} /></td>
+                <td><PerformanceValue value={shiftSummary.average.quality} /></td>
                 <td>{shiftSummary.average.mtbf}</td>
                 <td>{shiftSummary.average.mttr}</td>
                 <td>Shift Average</td>
@@ -531,7 +580,12 @@ const ShiftReport = memo(({ machineData }) => {
 
         {/* Article Details */}
         <div className="article-details">
-          <h3 className="section-title">Article Details</h3>
+          <h3 className="section-title">
+            <svg className="section-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Article Details
+          </h3>
           <div className="article-list">
             {articles.map((article, index) => (
               <div 
@@ -560,17 +614,17 @@ const ShiftReport = memo(({ machineData }) => {
                     </thead>
                     <tbody>
                       <tr>
-                        <td>{article.availability}%</td>
-                        <td>{article.performance}%</td>
-                        <td>{article.quality}%</td>
+                        <td><PerformanceValue value={article.availability} /></td>
+                        <td><PerformanceValue value={article.performance} /></td>
+                        <td><PerformanceValue value={article.quality} /></td>
                         <td>{article.mtbf}</td>
                         <td>{article.mttr}</td>
                         <td>{article.targetActual}</td>
                       </tr>
                       <tr className="average-row">
-                        <td>{article.average.availability}%</td>
-                        <td>{article.average.performance}%</td>
-                        <td>{article.average.quality}%</td>
+                        <td><PerformanceValue value={article.average.availability} /></td>
+                        <td><PerformanceValue value={article.average.performance} /></td>
+                        <td><PerformanceValue value={article.average.quality} /></td>
                         <td>{article.average.mtbf}</td>
                         <td>{article.average.mttr}</td>
                         <td>Article Average</td>
@@ -585,7 +639,12 @@ const ShiftReport = memo(({ machineData }) => {
 
         {/* Top Ten Errors */}
         <div className="top-errors">
-          <h3 className="section-title">TOP TEN ERRORS</h3>
+          <h3 className="section-title">
+            <svg className="section-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            TOP TEN ERRORS
+          </h3>
           <div className="errors-chart">
             <ReactECharts 
               option={errorsBarOption} 

@@ -1,44 +1,52 @@
 import { useState, useEffect, memo } from 'react'
 import './MachineStatus.css'
 
-const MachineStatus = memo(() => {
-  // 더미 데이터
-  const [timer, setTimer] = useState(0) // 초 단위
-  const [dieNo, setDieNo] = useState(62)
-  const [producedParts, setProducedParts] = useState(835)
-  const [strokeRate, setStrokeRate] = useState(19)
-  const [productionEfficiency, setProductionEfficiency] = useState(65)
-  const [status, setStatus] = useState('PRODUCING') // PRODUCING, SETUP, ERROR
-  const [dieProtection, setDieProtection] = useState(true)
+const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
+  // 공통 데이터 사용
+  const timer = machineData?.timer || 0
+  const dieNo = machineData?.dieNo || 62
+  const producedParts = machineData?.producedParts || 835
+  const strokeRate = machineData?.strokeRate || 19
+  const productionEfficiency = machineData?.productionEfficiency || 65
+  const status = machineData?.status || 'PRODUCING'
+  const dieProtection = machineData?.dieProtection || true
 
   // 타이머 업데이트 (1초마다)
   useEffect(() => {
     const interval = setInterval(() => {
-      setTimer(prev => prev + 1)
+      if (setMachineData) {
+        setMachineData(prev => ({
+          ...prev,
+          timer: (prev.timer || 0) + 1
+        }))
+      }
     }, 1000)
     return () => clearInterval(interval)
-  }, [])
+  }, [setMachineData])
 
   // 생산 중일 때 produced parts와 stroke rate 업데이트
   useEffect(() => {
-    if (status === 'PRODUCING') {
+    if (status === 'PRODUCING' && setMachineData) {
       const interval = setInterval(() => {
-        // stroke rate에 따라 produced parts 증가 (대략적으로)
-        setProducedParts(prev => prev + Math.floor(strokeRate / 60))
-        // stroke rate는 약간 변동
-        setStrokeRate(prev => {
-          const change = (Math.random() - 0.5) * 2 // -1 ~ +1
-          return Math.max(15, Math.min(25, Math.round(prev + change)))
-        })
-        // production efficiency도 약간 변동
-        setProductionEfficiency(prev => {
-          const change = (Math.random() - 0.5) * 2 // -1 ~ +1
-          return Math.max(60, Math.min(75, Math.round(prev + change)))
+        setMachineData(prev => {
+          const newStrokeRate = Math.max(15, Math.min(25, Math.round((prev.strokeRate || 19) + (Math.random() - 0.5) * 2)))
+          const newProductionEfficiency = Math.max(60, Math.min(75, Math.round((prev.productionEfficiency || 65) + (Math.random() - 0.5) * 2)))
+          const newProducedParts = (prev.producedParts || 835) + Math.floor(newStrokeRate / 60)
+          
+          // OEE도 productionEfficiency와 동기화
+          return {
+            ...prev,
+            producedParts: newProducedParts,
+            strokeRate: newStrokeRate,
+            productionEfficiency: newProductionEfficiency,
+            oee: newProductionEfficiency,
+            actualParts: newProducedParts
+          }
         })
       }, 5000) // 5초마다 업데이트
       return () => clearInterval(interval)
     }
-  }, [status, strokeRate])
+  }, [status, setMachineData])
 
   // 타이머 포맷팅 (HH:MM:SS)
   const formatTimer = (seconds) => {
@@ -107,6 +115,23 @@ const MachineStatus = memo(() => {
           </svg>
           <span>금형 보호 활성화</span>
         </div>
+      )}
+
+      {/* 차트 버튼 - 금형 보호 아래 */}
+      {onChartClick && (
+        <button 
+          className="machine-chart-button"
+          onClick={onChartClick}
+          title="Shift Report 보기"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 3v18h18"></path>
+            <path d="M18 17V9"></path>
+            <path d="M13 17V5"></path>
+            <path d="M8 17v-3"></path>
+          </svg>
+          <span>Shift Report</span>
+        </button>
       )}
 
       {/* Production Efficiency 게이지 */}

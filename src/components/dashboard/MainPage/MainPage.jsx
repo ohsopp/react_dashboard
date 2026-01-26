@@ -7,7 +7,7 @@ import DieProtection from '../DieProtection/DieProtection'
 import MachineStatus from '../MachineStatus/MachineStatus'
 import './MainPage.css'
 
-const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit }) => {
+const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit, onChartClick, machineData, setMachineData }) => {
   const containerRef = useRef(null)
   const sortableInstance = useRef(null)
   const [isMainDragging, setIsMainDragging] = useState(false)
@@ -141,7 +141,15 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
               onHide={onHide}
               showCsv={false}
             >
-              {config.content}
+              {config.id === 'main-panel4' && onChartClick ? (
+                <MachineStatus 
+                  onChartClick={onChartClick}
+                  machineData={machineData}
+                  setMachineData={setMachineData}
+                />
+              ) : (
+                config.content
+              )}
             </Panel>
           ))}
       </div>

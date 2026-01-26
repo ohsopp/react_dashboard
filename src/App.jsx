@@ -3,12 +3,31 @@ import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 import MainPage from './components/dashboard/MainPage/MainPage'
+import ShiftReport from './components/dashboard/ShiftReport/ShiftReport'
 import { useSensorData } from './hooks/useSensorData'
 import { usePanelConfigs } from './hooks/usePanelConfigs'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('main') // 'main' or 'sensor'
+  const [activeTab, setActiveTab] = useState('main') // 'main', 'sensor', or 'chart'
   const [selectedRange, setSelectedRange] = useState('1h')
+  
+  // Machine #1 공통 데이터 상태
+  const [machineData, setMachineData] = useState({
+    timer: 0,
+    dieNo: 62,
+    producedParts: 835,
+    strokeRate: 19,
+    productionEfficiency: 65, // OEE로 사용
+    status: 'PRODUCING',
+    dieProtection: true,
+    // Shift Report용 계산된 값들
+    quality: 72,
+    performance: 80,
+    availability: 65,
+    oee: 65, // productionEfficiency와 동일
+    targetParts: 4800,
+    actualParts: 4230
+  })
   
   // 센서 데이터 훅 사용
   const {
@@ -90,6 +109,7 @@ function App() {
   const [isStatDragging, setIsStatDragging] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isShiftReportOpen, setIsShiftReportOpen] = useState(false)
   const sortableInstance = useRef(null)
   const statSortableInstance = useRef(null)
   const containerRef = useRef(null)
@@ -739,6 +759,9 @@ function App() {
               selectedRange={selectedRange}
               onSelectRange={setSelectedRange}
               onEdit={handleEdit}
+              onChartClick={() => setIsShiftReportOpen(true)}
+              machineData={machineData}
+              setMachineData={setMachineData}
             />
           ) : (
             <>
@@ -848,6 +871,36 @@ function App() {
               }
             }}
           />
+          
+          {/* Shift Report 모달 */}
+          {isShiftReportOpen && (
+            <div className="panel-modal-overlay" onMouseDown={() => setIsShiftReportOpen(false)}>
+              <div 
+                className="panel-modal" 
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{ width: '95vw', height: '95vh', maxWidth: '95vw', maxHeight: '95vh' }}
+              >
+                <div className="panel-modal-header-wrapper">
+                  <div className="panel-header">
+                    <div className="panel-header-left">
+                      <h2 className="panel-title">Shift Report</h2>
+                    </div>
+                    <div className="panel-header-right">
+                      <button 
+                        className="panel-modal-close" 
+                        onClick={() => setIsShiftReportOpen(false)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="panel-modal-content" style={{ padding: '0', overflow: 'auto' }}>
+                  <ShiftReport machineData={machineData} />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

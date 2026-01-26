@@ -5,7 +5,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: #000000;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -25,7 +25,7 @@
 }
 
 .panel-modal {
-  background: #1f1f23;
+  background: #0a0a0b;
   border: 1px solid #21262d;
   border-radius: 6px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
@@ -53,6 +53,7 @@
 .panel-modal-header-wrapper {
   background: #1f1f23;
   padding: 0;
+  padding-bottom: 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -123,7 +124,7 @@
   flex: 1;
   min-height: 0;
   height: 100%;
-  background: #1f1f23;
+  background: #0a0a0b;
   color: #ffffff;
   scrollbar-width: thin;
   scrollbar-color: #30363d transparent;

@@ -25,6 +25,44 @@
   gap: 8px;
 }
 
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: #8e9196;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  user-select: none;
+}
+
+.sidebar-tab svg {
+  width: 24px;
+  height: 24px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-tab:hover {
+  background-color: #2d2d33;
+  color: #d8d9da;
+}
+
+.sidebar-tab:hover svg {
+  transform: scale(1.1);
+}
+
+.sidebar-tab.active {
+  color: #58a6ff;
+  background-color: #1a3a5a;
+}
+
+.sidebar-tab.active svg {
+  color: #58a6ff;
+}
+
 .app-sidebar-text {
   writing-mode: vertical-rl;
   text-orientation: upright;

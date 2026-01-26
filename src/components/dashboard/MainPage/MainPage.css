@@ -1,0 +1,18 @@
+.main-page-container {
+  width: 100%;
+  margin: 0 auto;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: minmax(80px, 250px);
+  gap: 8px;
+  align-items: stretch;
+  background: #0a0a0b;
+}
+
+/* Motor Forward 패널만 세로 2.5칸 차지 (더 크게) */
+#main-panel1 {
+  grid-row: span 2;
+  min-height: 350px;
+}
+ㄴ

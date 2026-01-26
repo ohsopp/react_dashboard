@@ -2,35 +2,26 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Sortable from 'sortablejs'
 import './App.css'
 import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
-import Chart from './components/dashboard/Chart/Chart'
-import SensorInfo from './components/dashboard/SensorInfo/SensorInfo'
-import MotorForward from './components/dashboard/MotorForward/MotorForward'
-import Counter from './components/dashboard/Counter/Counter'
-import DieProtection from './components/dashboard/DieProtection/DieProtection'
-
-// 일반 패널 그래프 grid 설정 (유지보수 편의를 위해 상수로 분리)
-const DEFAULT_PANEL_GRID = {
-  left: '25px',
-  right: '25px',
-  bottom: '10px',
-  top: '10%'
-}
+import MainPage from './components/dashboard/MainPage/MainPage'
+import { useSensorData } from './hooks/useSensorData'
+import { usePanelConfigs } from './hooks/usePanelConfigs'
 
 function App() {
+  const [activeTab, setActiveTab] = useState('main') // 'main' or 'sensor'
   const [selectedRange, setSelectedRange] = useState('1h')
-  const [temperature, setTemperature] = useState(null)
-  const [temperatureHistory, setTemperatureHistory] = useState({ timestamps: [], values: [] })
-  const [vibrationHistory, setVibrationHistory] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
-  const [dataZoomRange, setDataZoomRange] = useState({ start: 80, end: 100 })
-  const [ipInfo, setIpInfo] = useState({ currentIp: '--', iolinkIp: '--' })
-  const [networkStatus, setNetworkStatus] = useState({
-    mqtt: { connected: false, latency: null },
-    influxdb: { connected: false, latency: null }
-  })
-  const eventSourceRef = useRef(null)
-  const abortControllerRef = useRef(null) // AbortController 추적
-  const selectedRangeRef = useRef(selectedRange) // 최신 selectedRange 추적
-  const vibrationTemperatureRef = useRef(null) // 진동센서 온도값 유지 (깜빡임 방지)
+  
+  // 센서 데이터 훅 사용
+  const {
+    temperature,
+    temperatureHistory,
+    vibrationHistory,
+    dataZoomRange,
+    setDataZoomRange,
+    ipInfo,
+    networkStatus,
+    vibrationTemperatureRef,
+    fetchTemperatureHistory
+  } = useSensorData(selectedRange)
   
   const getSubtitle = () => {
     const rangeMap = {
@@ -42,437 +33,16 @@ function App() {
     return rangeMap[selectedRange] || 'Last 1 hour'
   }
 
-  // 탁도/유량/초음파용 1시간 더미 데이터 (5분 간격 13점)
-  const dummy1hChartData = useMemo(() => {
-    const base = Date.now() - 3600000
-    const interval = 5 * 60 * 1000
-    const timestamps = []
-    for (let i = 0; i <= 12; i++) timestamps.push(base + i * interval)
-    const labels = timestamps.map(ts => {
-      const d = new Date(ts)
-      return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-    })
-    const turbidityValues = [12, 15, 18, 22, 28, 25, 30, 35, 32, 38, 40, 36, 42]
-    const flowValues = [20, 25, 35, 45, 55, 50, 60, 65, 70, 62, 58, 52, 48]
-    const ultrasonicValues = [80, 95, 110, 125, 140, 130, 150, 165, 155, 170, 160, 145, 135]
-    return {
-      timestamps,
-      labels,
-      turbidity: { timestamps, labels, datasets: [{ label: 'Turbidity', data: turbidityValues, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.15)' }] },
-      flow: { timestamps, labels, datasets: [{ label: 'Flow', data: flowValues, borderColor: '#22c55e', backgroundColor: 'rgba(34, 197, 94, 0.15)' }] },
-      ultrasonic: { timestamps, labels, datasets: [{ label: 'Ultrasonic', data: ultrasonicValues, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.15)' }] }
-    }
-  }, [])
-
-  const panelConfigs = useMemo(() => {
-    // Chart 데이터 포맷 변환
-    const chartData = {
-      labels: temperatureHistory.timestamps.map(ts => {
-        const date = new Date(ts)
-        // 선택된 범위에 따라 날짜 포맷 조정
-        if (selectedRange === '7d') {
-          return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
-                 date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-        } else {
-          return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-        }
-      }),
-      timestamps: temperatureHistory.timestamps, // 원본 타임스탬프 유지
-      datasets: [{
-        label: 'Temperature',
-        data: temperatureHistory.values.map(val => val !== null && val !== undefined ? val : null),
-        borderColor: '#58a6ff',
-        backgroundColor: 'rgba(88, 166, 255, 0.1)'
-      }]
-    }
-
-    return [
-      { 
-        id: 'panel1', 
-        title: 'Temperature History', 
-        content: temperatureHistory.timestamps.length > 0 ? (
-          <Chart 
-            key={`chart-${selectedRange}`}
-            type="line" 
-            data={chartData}
-            dataZoomStart={dataZoomRange.start}
-            dataZoomEnd={dataZoomRange.end}
-            timeRange={selectedRange}
-            onDataZoomChange={(start, end) => setDataZoomRange({ start, end })}
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              grid: DEFAULT_PANEL_GRID
-            }}
-          />
-        ) : (
-          <div className="chart-placeholder">
-            데이터를 불러오는 중...
-          </div>
-        )
-      },
-      { 
-        id: 'panel2', 
-        title: 'Customized Pie', 
-        content: (
-          <Chart 
-            type="pie" 
-            data={{
-              series: {
-                name: 'Access From',
-                data: [
-                  { value: 335, name: 'Direct' },
-                  { value: 310, name: 'Email' },
-                  { value: 274, name: 'Union Ads' },
-                  { value: 235, name: 'Video Ads' },
-                  { value: 400, name: 'Search Engine' }
-                ]
-              }
-            }}
-            options={{
-              backgroundColor: '#0d1117'
-            }}
-          />
-        )
-      },
-      { 
-        id: 'panel5', 
-        title: 'Bar Animation', 
-        content: (
-          <Chart 
-            type="bar" 
-            options={{}}
-          />
-        )
-      },
-      {
-        id: 'panel6',
-        title: 'Temperature (AQI Style)',
-        content: temperatureHistory.timestamps.length > 0 ? (
-          <Chart
-            type="aqi"
-            data={{
-              title: 'Temperature',
-              name: 'Temperature',
-              labels: temperatureHistory.timestamps.map(ts => {
-                const date = new Date(ts)
-                if (selectedRange === '7d') {
-                  return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
-                         date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                } else {
-                  return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                }
-              }),
-              timestamps: temperatureHistory.timestamps,
-              values: temperatureHistory.values.map(val => val !== null && val !== undefined ? val : null)
-            }}
-            timeRange={selectedRange}
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              grid: DEFAULT_PANEL_GRID
-
-            }}
-          />
-        ) : (
-          <div className="chart-placeholder">
-            데이터를 불러오는 중...
-          </div>
-        )
-      },
-      {
-        id: 'panel7',
-        title: 'Vibration History',
-        content: (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', height: '100%' }}>
-            {vibrationHistory.timestamps.length > 0 ? (
-              <Chart
-                key={`vibration-chart-${selectedRange}`}
-                type="line"
-                data={{
-                  labels: vibrationHistory.timestamps.map(ts => {
-                    const date = new Date(ts)
-                    if (selectedRange === '7d') {
-                      return date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) + ' ' + 
-                             date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                    } else {
-                      return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-                    }
-                  }),
-                  timestamps: vibrationHistory.timestamps,
-                  datasets: [
-                    {
-                      label: 'v-RMS (mm/s)',
-                      data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined ? val : null)
-                    },
-                    {
-                      label: 'a-Peak (m/s²)',
-                      data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined ? val : null)
-                    },
-                    {
-                      label: 'a-RMS (m/s²)',
-                      data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined ? val : null)
-                    },
-                    {
-                      label: 'Crest',
-                      data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined ? val : null)
-                    }
-                  ]
-                }}
-                timeRange={selectedRange}
-                options={{
-                  animation: false,
-                  sampling: 'lttb',
-                  dataZoom: [], // 진동센서 그래프는 줌 기능 비활성화
-                  grid: DEFAULT_PANEL_GRID
-                }}
-              />
-            ) : (
-              <div className="chart-placeholder">
-                데이터를 불러오는 중...
-              </div>
-            )}
-          </div>
-        )
-      },
-      {
-        id: 'panel8',
-        title: 'Sensor Information',
-        content: <SensorInfo ports={["1", "2"]} showMasterInfo={true} />
-      },
-      {
-        id: 'panel9',
-        title: 'Motor Forward',
-        content: <MotorForward />
-      },
-      {
-        id: 'panel10',
-        title: 'Counter',
-        content: <Counter />
-      },
-      {
-        id: 'panel11',
-        title: 'Die Protection',
-        content: <DieProtection />
-      },
-      {
-        id: 'panel12',
-        title: 'Turbidity History',
-        content: (
-          <Chart
-            type="line"
-            data={dummy1hChartData.turbidity}
-            timeRange="1h"
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              grid: DEFAULT_PANEL_GRID,
-              yAxis: { 
-                min: 0, 
-                max: 50, 
-                name: 'Turbidity (NTU)',
-                nameTextStyle: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                axisLabel: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                splitLine: {
-                  lineStyle: {
-                    color: 'rgba(180, 185, 190, 0.3)'
-                  }
-                }
-              }
-            }}
-          />
-        )
-      },
-      {
-        id: 'panel13',
-        title: 'Flow history',
-        content: (
-          <Chart
-            type="line"
-            data={dummy1hChartData.flow}
-            timeRange="1h"
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              grid: DEFAULT_PANEL_GRID,
-              yAxis: { 
-                min: 0, 
-                max: 80, 
-                name: 'Flow (L/min)',
-                nameTextStyle: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                axisLabel: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                splitLine: {
-                  lineStyle: {
-                    color: 'rgba(180, 185, 190, 0.3)'
-                  }
-                }
-              }
-            }}
-          />
-        )
-      },
-      {
-        id: 'panel14',
-        title: 'Ultrasonic History',
-        content: (
-          <Chart
-            type="line"
-            data={dummy1hChartData.ultrasonic}
-            timeRange="1h"
-            options={{
-              animation: false,
-              sampling: 'lttb',
-              grid: DEFAULT_PANEL_GRID,
-              yAxis: { 
-                min: 0, 
-                max: 200, 
-                name: 'Level (mm)',
-                nameTextStyle: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                axisLabel: {
-                  fontSize: 10,
-                  color: '#9ca3af'
-                },
-                splitLine: {
-                  lineStyle: {
-                    color: 'rgba(180, 185, 190, 0.3)'
-                  }
-                }
-              }
-            }}
-          />
-        )
-      }
-      ]
-    }, [temperature, temperatureHistory, vibrationHistory, selectedRange, dataZoomRange, dummy1hChartData])
-
-  // 통계 패널 설정 (별도 관리)
-  const statPanelConfigs = useMemo(() => {
-    // 온도 평균 계산
-    let avgTemperature = '--'
-    if (temperatureHistory.values && temperatureHistory.values.length > 0) {
-      const validValues = temperatureHistory.values.filter(v => v !== null && v !== undefined && !isNaN(v))
-      if (validValues.length > 0) {
-        const sum = validValues.reduce((acc, val) => acc + val, 0)
-        avgTemperature = (sum / validValues.length).toFixed(1) + '°C'
-      }
-    }
-    
-    // 진동센서 평균 계산 (Crest 사용)
-    let avgVibration = '--'
-    if (vibrationHistory.crest && vibrationHistory.crest.length > 0) {
-      const validValues = vibrationHistory.crest.filter(v => v !== null && v !== undefined && !isNaN(v))
-      if (validValues.length > 0) {
-        const sum = validValues.reduce((acc, val) => acc + val, 0)
-        avgVibration = (sum / validValues.length).toFixed(2)
-      }
-    }
-    
-    // 실시간 온도값
-    const currentTemperature = temperature !== null && temperature !== undefined && !isNaN(temperature) 
-      ? `${temperature.toFixed(1)}°C` 
-      : '--'
-    
-    // 실시간 진동값 (Crest, 최신값)
-    let currentVibration = '--'
-    if (vibrationHistory.crest && vibrationHistory.crest.length > 0) {
-      const latestValues = vibrationHistory.crest.slice(-1) // 최신값
-      const latestValue = latestValues[0]
-      if (latestValue !== null && latestValue !== undefined && !isNaN(latestValue)) {
-        currentVibration = latestValue.toFixed(2)
-      }
-    }
-    
-    return [
-      { id: 'stat-panel6', title: 'Temperature Average', content: (
-        <div className="stat-panel stat-panel-with-chart">
-          <div className="stat-panel-chart-bg">
-            {temperatureHistory.values && temperatureHistory.values.length > 0 ? (
-              <Chart
-                type="mini"
-                data={{
-                  values: temperatureHistory.values,
-                  timestamps: temperatureHistory.timestamps
-                }}
-                options={{}}
-              />
-            ) : null}
-          </div>
-          <div className="stat-panel-content">
-            <div className="stat-value">{avgTemperature}</div>
-          </div>
-        </div>
-      ) },
-      { id: 'stat-panel7', title: 'Vibration Average', content: (
-        <div className="stat-panel stat-panel-with-chart">
-          <div className="stat-panel-chart-bg">
-            {vibrationHistory.v_rms && vibrationHistory.v_rms.length > 0 && (
-              vibrationHistory.v_rms.some(v => v !== null && v !== undefined && !isNaN(v)) ||
-              vibrationHistory.a_peak?.some(v => v !== null && v !== undefined && !isNaN(v)) ||
-              vibrationHistory.a_rms?.some(v => v !== null && v !== undefined && !isNaN(v)) ||
-              vibrationHistory.crest?.some(v => v !== null && v !== undefined && !isNaN(v))
-            ) ? (
-              <Chart
-                type="mini"
-                data={{
-                  datasets: [
-                    {
-                      label: 'v-RMS',
-                      data: (vibrationHistory.v_rms || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
-                    },
-                    {
-                      label: 'a-Peak',
-                      data: (vibrationHistory.a_peak || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
-                    },
-                    {
-                      label: 'a-RMS',
-                      data: (vibrationHistory.a_rms || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
-                    },
-                    {
-                      label: 'Crest',
-                      data: (vibrationHistory.crest || []).map(val => val !== null && val !== undefined && !isNaN(val) ? val : null)
-                    }
-                  ],
-                  timestamps: vibrationHistory.timestamps
-                }}
-                options={{
-                  yAxis: {
-                    min: undefined,
-                    max: undefined,
-                    splitLine: {
-                      show: false
-                    },
-                    axisLabel: {
-                      show: false
-                    }
-                  }
-                }}
-              />
-            ) : null}
-          </div>
-          <div className="stat-panel-content">
-            <div className="stat-value">{avgVibration}</div>
-          </div>
-        </div>
-      ) },
-      { id: 'stat-panel8', title: 'Real-time Values', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">Temperature</span><span className="ip-address">{currentTemperature}</span></div><div className="ip-row"><span className="ip-label">Vibration (Crest)</span><span className="ip-address">{currentVibration}</span></div></div> },
-      { id: 'stat-panel9', title: 'Network Status', content: <div className="stat-panel ip-panel"><div className="ip-row"><span className="ip-label">MQTT</span><div className="status-row"><span className={`status-indicator ${networkStatus.mqtt.connected ? 'connected' : 'disconnected'}`}></span><span className="ip-address">{networkStatus.mqtt.connected ? (networkStatus.mqtt.latency !== null ? `${networkStatus.mqtt.latency}ms` : '--') : 'Disconnected'}</span></div></div><div className="ip-row"><span className="ip-label">InfluxDB</span><div className="status-row"><span className={`status-indicator ${networkStatus.influxdb.connected ? 'connected' : 'disconnected'}`}></span><span className="ip-address">{networkStatus.influxdb.connected ? (networkStatus.influxdb.latency !== null ? `${networkStatus.influxdb.latency}ms` : '--') : 'Disconnected'}</span></div></div></div> }
-    ]
-  }, [temperature, temperatureHistory, vibrationHistory, ipInfo, networkStatus])
+  // 패널 설정 훅 사용
+  const { panelConfigs, statPanelConfigs } = usePanelConfigs({
+    temperature,
+    temperatureHistory,
+    vibrationHistory,
+    selectedRange,
+    dataZoomRange,
+    setDataZoomRange,
+    networkStatus
+  })
 
   // 기본 레이아웃: panel1, panel6, panel7 (3등분), panel2, panel5 (2등분), panel8 (전체)
   const DEFAULT_PANEL_SIZES = {
@@ -482,9 +52,6 @@ function App() {
     panel6: 4,  // 3등분 (12/3 = 4)
     panel7: 4,  // 3등분 (12/3 = 4)
     panel8: 6,  // 절반 (12/2 = 6)
-    panel9: 4,  // Motor Forward (3등분)
-    panel10: 4, // Counter (3등분)
-    panel11: 4, // Die Protection (3등분)
     panel12: 4, // 탁도 그래프 (3등분)
     panel13: 4, // 유량 그래프 (3등분)
     panel14: 4  // 초음파 그래프 (3등분)
@@ -528,9 +95,9 @@ function App() {
   const containerRef = useRef(null)
   const statContainerRef = useRef(null)
   
-  // 기본 패널 순서: panel1..panel14
-  // panelConfigs: [panel1(0), panel2(1), panel5(2), panel6(3), panel7(4), panel8(5), panel9(6), panel10(7), panel11(8), panel12(9), panel13(10), panel14(11)]
-  const DEFAULT_PANEL_ORDER = [0, 3, 4, 1, 2, 5, 6, 7, 8, 9, 10, 11]
+  // 기본 패널 순서: panel1..panel14 (panel9, panel10, panel11 제거됨)
+  // panelConfigs: [panel1(0), panel2(1), panel5(2), panel6(3), panel7(4), panel8(5), panel12(6), panel13(7), panel14(8)]
+  const DEFAULT_PANEL_ORDER = [0, 3, 4, 1, 2, 5, 6, 7, 8]
   
   const [panelOrder, setPanelOrder] = useState(() => {
     // localStorage에서 저장된 순서 불러오기
@@ -548,12 +115,9 @@ function App() {
             'panel6': 3,
             'panel7': 4,
             'panel8': 5,
-            'panel9': 6,
-            'panel10': 7,
-            'panel11': 8,
-            'panel12': 9,
-            'panel13': 10,
-            'panel14': 11
+            'panel12': 6,
+            'panel13': 7,
+            'panel14': 8
           }
           const convertedOrder = savedOrder
             .map(id => orderMap[id])
@@ -561,7 +125,7 @@ function App() {
           
           // 기본 순서와 병합 (없는 패널은 기본 순서 사용)
           if (convertedOrder.length > 0) {
-            const allPanels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] // 모든 패널 인덱스
+            const allPanels = [0, 1, 2, 3, 4, 5, 6, 7, 8] // 모든 패널 인덱스
             const missing = allPanels.filter(idx => !convertedOrder.includes(idx))
             return [...convertedOrder, ...missing]
           }
@@ -577,7 +141,7 @@ function App() {
     return [0, 1, 2, 3]
   })
   
-  const panelOrderRef = useRef([0, 3, 4, 1, 2, 5, 6, 7, 8, 9, 10, 11])
+  const panelOrderRef = useRef([0, 3, 4, 1, 2, 5, 6, 7, 8])
   const statPanelOrderRef = useRef([0, 1, 2, 3])
   const panelSizesRef = useRef({
     panel1: 4,
@@ -586,13 +150,20 @@ function App() {
     panel6: 4,
     panel7: 4,
     panel8: 12,
-    panel9: 4,
-    panel10: 4,
-    panel11: 4,
     panel12: 4,
     panel13: 4,
     panel14: 4
   })
+  
+  // Main 패널 사이즈 관리
+  const [mainPanelSizes, setMainPanelSizes] = useState({
+    'main-panel1': 4,
+    'main-panel2': 4,
+    'main-panel3': 4
+  })
+  
+  // Main 패널 순서 관리
+  const [mainPanelOrder, setMainPanelOrder] = useState([0, 1, 2])
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
     'stat-panel7': 3,
@@ -610,239 +181,6 @@ function App() {
     panelSizesRef.current = panelSizes
   }, [panelSizes])
   
-  // selectedRange가 변경될 때마다 ref 업데이트
-  useEffect(() => {
-    selectedRangeRef.current = selectedRange
-  }, [selectedRange])
-  
-  // InfluxDB에서 온도 히스토리 데이터 가져오기
-  const fetchTemperatureHistory = useCallback(async (range) => {
-    // range가 없으면 최신 selectedRange 사용 (ref를 통해)
-    const targetRange = range || selectedRangeRef.current
-    
-    // 이전 요청 취소
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-    
-    // 새로운 AbortController 생성
-    const abortController = new AbortController()
-    abortControllerRef.current = abortController
-    
-    // 요청 시점의 selectedRange 저장 (응답 처리 시 비교용)
-    const requestRange = targetRange
-    
-    try {
-      const response = await fetch(`/api/influxdb/temperature?range=${requestRange}`, {
-        signal: abortController.signal
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        // 요청 시점의 range와 현재 selectedRange가 일치하고 요청이 취소되지 않은 경우에만 데이터 설정
-        // ref를 통해 최신 selectedRange 확인 (클로저 문제 해결)
-        const currentRange = selectedRangeRef.current
-        const isAborted = abortController.signal.aborted
-        
-        if (requestRange === currentRange && !isAborted) {
-          // 데이터가 있을 때만 업데이트
-          if (data.timestamps && data.timestamps.length > 0) {
-            // 한 번 더 최신 range 확인 (이중 체크로 비동기 응답 순서 문제 해결)
-            if (selectedRangeRef.current === requestRange) {
-              setTemperatureHistory({
-                timestamps: data.timestamps || [],
-                values: data.values || []
-              })
-              console.log(`✅ 데이터 업데이트: ${requestRange} 범위, ${data.timestamps.length}개 데이터 포인트`)
-            } else {
-              console.log(`⚠️ 응답 무시: 최종 확인 시 범위 불일치 (요청: ${requestRange}, 현재: ${selectedRangeRef.current})`)
-            }
-          } else {
-            console.log(`⚠️ 응답 무시: 데이터가 없음 (${requestRange} 범위)`)
-          }
-        } else {
-          console.log(`⚠️ 응답 무시: 요청 범위(${requestRange})와 현재 범위(${currentRange}) 불일치 또는 취소됨`)
-        }
-      }
-    } catch (error) {
-      // AbortError는 정상적인 취소이므로 무시
-      if (error.name !== 'AbortError') {
-        console.error('온도 히스토리 데이터 가져오기 실패:', error)
-      }
-    }
-  }, []) // 의존성 배열을 비워서 함수가 재생성되지 않도록 함 (클로저 문제 해결)
-
-  // selectedRange가 변경되면 해당 범위의 데이터 로드
-  useEffect(() => {
-    // ref 업데이트 (최신 selectedRange 추적)
-    selectedRangeRef.current = selectedRange
-    
-    // 이전 요청 취소
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-    
-    // 이전 데이터 완전히 초기화 (다른 범위 그래프가 보이지 않도록)
-    setTemperatureHistory({ timestamps: [], values: [] })
-    
-    // dataZoom 초기화
-    setDataZoomRange({ start: 0, end: 100 })
-    
-    // 현재 selectedRange로 데이터 로드 (ref를 통해 최신 값 사용)
-    fetchTemperatureHistory(selectedRangeRef.current)
-    
-    // 5초마다 데이터 업데이트 (실시간)
-    // interval 내부에서 ref를 통해 최신 selectedRange 사용 (클로저 문제 해결)
-    const interval = setInterval(() => {
-      // ref를 통해 최신 selectedRange 사용 (항상 최신 값 참조)
-      fetchTemperatureHistory(selectedRangeRef.current)
-    }, 5000)
-
-    return () => {
-      clearInterval(interval)
-      // cleanup 시 진행 중인 요청 취소
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [selectedRange]) // fetchTemperatureHistory는 ref를 사용하므로 의존성에서 제거 (클로저 문제 해결)
-
-  // 진동센서 히스토리 데이터 가져오기
-  const fetchVibrationHistory = useCallback(async (range) => {
-    const targetRange = range || selectedRangeRef.current
-    
-    try {
-      const response = await fetch(`/api/influxdb/vibration?range=${targetRange}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.timestamps && data.timestamps.length > 0) {
-          setVibrationHistory({
-            timestamps: data.timestamps || [],
-            v_rms: data.v_rms || [],
-            a_peak: data.a_peak || [],
-            a_rms: data.a_rms || [],
-            crest: data.crest || [],
-            temperature: data.temperature || []
-          })
-        } else {
-          // 데이터가 없으면 빈 배열로 초기화
-          setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
-        }
-      }
-    } catch (error) {
-      console.error('진동센서 히스토리 데이터 가져오기 실패:', error)
-    }
-  }, [])
-
-  // selectedRange가 변경되면 진동센서 데이터도 로드
-  useEffect(() => {
-    // 이전 데이터 완전히 초기화
-    setVibrationHistory({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
-    
-    // 현재 selectedRange로 데이터 로드
-    fetchVibrationHistory(selectedRangeRef.current)
-    
-    // 5초마다 데이터 업데이트 (실시간)
-    const interval = setInterval(() => {
-      fetchVibrationHistory(selectedRangeRef.current)
-    }, 5000)
-    
-    return () => clearInterval(interval)
-  }, [selectedRange, fetchVibrationHistory])
-
-  // IP 정보 가져오기
-  useEffect(() => {
-    const fetchIpInfo = async () => {
-      try {
-        const response = await fetch('/api/system/ip')
-        if (response.ok) {
-          const data = await response.json()
-          setIpInfo({
-            currentIp: data.current_ip || '--',
-            iolinkIp: data.iolink_ip || '--'
-          })
-        }
-      } catch (error) {
-        console.error('IP 정보 가져오기 실패:', error)
-      }
-    }
-    
-    fetchIpInfo()
-    // 30초마다 IP 정보 업데이트
-    const interval = setInterval(fetchIpInfo, 30000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  // 네트워크 연결 상태 확인 (MQTT, InfluxDB)
-  useEffect(() => {
-    const fetchNetworkStatus = async () => {
-      try {
-        const response = await fetch('/api/network/status')
-        if (response.ok) {
-          const data = await response.json()
-          setNetworkStatus(data)
-        }
-      } catch (error) {
-        console.error('네트워크 상태 확인 실패:', error)
-        setNetworkStatus({
-          mqtt: { connected: false, latency: null },
-          influxdb: { connected: false, latency: null }
-        })
-      }
-    }
-    
-    fetchNetworkStatus()
-    // 5초마다 네트워크 상태 업데이트
-    const interval = setInterval(fetchNetworkStatus, 5000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
-  // Server-Sent Events를 통해 백엔드에서 MQTT 데이터 수신
-  useEffect(() => {
-    console.log('🔄 SSE 연결 시도: /api/mqtt/temperature')
-    
-    const eventSource = new EventSource('/api/mqtt/temperature')
-    
-    eventSource.onopen = () => {
-      console.log('✅ SSE Connection opened')
-    }
-    
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        // 하트비트는 무시
-        if (data.heartbeat) {
-          return
-        }
-        
-        if (data.temperature !== undefined) {
-          console.log('📨 Temperature received:', data.temperature)
-          setTemperature(data.temperature)
-          // 새로운 온도가 들어오면 최신 selectedRange로 히스토리 업데이트 (ref 사용)
-          fetchTemperatureHistory(selectedRangeRef.current)
-        }
-      } catch (error) {
-        console.error('❌ Error parsing SSE message:', error)
-      }
-    }
-    
-    eventSource.onerror = (error) => {
-      console.error('❌ SSE Error:', error)
-      console.log('💡 백엔드 서버가 실행 중인지 확인하세요 (포트 5005)')
-    }
-    
-    eventSourceRef.current = eventSource
-
-    return () => {
-      if (eventSourceRef.current) {
-        console.log('🧹 Closing SSE connection')
-        eventSourceRef.current.close()
-      }
-    }
-  }, [])
   
   const [hiddenPanels, setHiddenPanels] = useState(() => {
     // localStorage에서 숨겨진 패널 로드
@@ -869,6 +207,53 @@ function App() {
     }
     return []
   })
+  
+  const [hiddenMainPanels, setHiddenMainPanels] = useState(() => {
+    // localStorage에서 숨겨진 Main 패널 로드
+    try {
+      const saved = localStorage.getItem('hidden-main-panels')
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch (e) {
+      console.error('숨겨진 Main 패널 로드 실패:', e)
+    }
+    return []
+  })
+  
+  const handleMainSizeChange = (panelId, newSize) => {
+    setMainPanelSizes(prev => ({
+      ...prev,
+      [panelId]: newSize
+    }))
+  }
+  
+  const handleHideMainPanel = (panelId) => {
+    setHiddenMainPanels(prev => {
+      if (prev.includes(panelId)) {
+        return prev
+      }
+      const newHidden = [...prev, panelId]
+      try {
+        localStorage.setItem('hidden-main-panels', JSON.stringify(newHidden))
+      } catch (e) {
+        console.error('숨겨진 Main 패널 저장 실패:', e)
+      }
+      return newHidden
+    })
+  }
+  
+  const handleShowMainPanel = (panelId) => {
+    setHiddenMainPanels(prev => {
+      const newHidden = prev.filter(id => id !== panelId)
+      try {
+        localStorage.setItem('hidden-main-panels', JSON.stringify(newHidden))
+      } catch (e) {
+        console.error('숨겨진 Main 패널 저장 실패:', e)
+      }
+      return newHidden
+    })
+  }
 
   // ref 업데이트
   useEffect(() => {
@@ -1111,6 +496,16 @@ function App() {
 
   // SortableJS 초기화
   useEffect(() => {
+    // Sensor 탭이 아닐 때는 초기화하지 않음
+    if (activeTab !== 'sensor') {
+      // 기존 인스턴스 제거
+      if (sortableInstance.current) {
+        sortableInstance.current.destroy()
+        sortableInstance.current = null
+      }
+      return
+    }
+
     const initSortable = () => {
       if (!containerRef.current) return
 
@@ -1182,7 +577,7 @@ function App() {
     }
 
     // DOM이 렌더링될 때까지 대기
-    const timer = setTimeout(initSortable, 0)
+    const timer = setTimeout(initSortable, 100)
 
       return () => {
         clearTimeout(timer)
@@ -1191,10 +586,20 @@ function App() {
           sortableInstance.current = null
         }
       }
-    }, [isModalOpen]) // 모달 상태 변경 시 재초기화
+    }, [isModalOpen, activeTab]) // 모달 상태 및 탭 변경 시 재초기화
 
   // 통계 패널용 SortableJS 초기화
   useEffect(() => {
+    // Sensor 탭이 아닐 때는 초기화하지 않음
+    if (activeTab !== 'sensor') {
+      // 기존 인스턴스 제거
+      if (statSortableInstance.current) {
+        statSortableInstance.current.destroy()
+        statSortableInstance.current = null
+      }
+      return
+    }
+
     const initStatSortable = () => {
       if (!statContainerRef.current) return
 
@@ -1258,7 +663,7 @@ function App() {
       }
     }
 
-    const timer = setTimeout(initStatSortable, 0)
+    const timer = setTimeout(initStatSortable, 100)
 
     return () => {
       clearTimeout(timer)
@@ -1267,7 +672,7 @@ function App() {
         statSortableInstance.current = null
       }
     }
-  }, [isModalOpen])
+  }, [isModalOpen, activeTab])
 
   // 통계 패널 순서 업데이트
   const updateStatPanelOrder = () => {
@@ -1297,106 +702,146 @@ function App() {
       
       <div className="app-content-wrapper">
         <div className="app-sidebar">
-          <div className="app-sidebar-text">사이드바</div>
+          <div 
+            className={`sidebar-tab ${activeTab === 'main' ? 'active' : ''}`}
+            onClick={() => setActiveTab('main')}
+            title="Main Page"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+          <div 
+            className={`sidebar-tab ${activeTab === 'sensor' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sensor')}
+            title="Sensor"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M18 7l-5 5-4-4-3 3"></path>
+            </svg>
+          </div>
         </div>
         <div className="app-main">
-          <DataRangeSelector
-            selected={selectedRange}
-            onSelect={setSelectedRange}
-            onEdit={handleEdit}
-          />
-          
-          {/* 통계 패널 그리드 (상단 작은 카드) */}
-          <div 
-            ref={statContainerRef}
-            className="stats-container"
-            id="stats-container"
-          >
-        {statPanelOrder
-          .filter(orderIndex => statPanelConfigs[orderIndex] && !hiddenStatPanels.includes(statPanelConfigs[orderIndex].id))
-          .map((orderIndex, index) => {
-            const config = statPanelConfigs[orderIndex]
-            if (!config) return null
-            return (
-              <Panel 
-                key={config.id}
-                id={config.id}
-                index={index}
-                title={config.title}
-                subtitle={null}
-                size={statPanelSizes[config.id]}
-                onSizeChange={handleStatSizeChange}
-                isDragging={isStatDragging}
-                onModalOpen={() => setIsModalOpen(true)}
-                onModalClose={() => setIsModalOpen(false)}
-                onHide={() => handleHideStatPanel(config.id)}
-                showCsv={false}
+          {activeTab === 'main' ? (
+            <MainPage
+              panelSizes={mainPanelSizes}
+              onSizeChange={handleMainSizeChange}
+              isDragging={isDragging}
+              onModalOpen={() => setIsModalOpen(true)}
+              onModalClose={() => setIsModalOpen(false)}
+              onHide={handleHideMainPanel}
+              hiddenPanels={hiddenMainPanels}
+              panelOrder={mainPanelOrder}
+              onPanelOrderChange={setMainPanelOrder}
+              selectedRange={selectedRange}
+              onSelectRange={setSelectedRange}
+              onEdit={handleEdit}
+            />
+          ) : (
+            <>
+              <DataRangeSelector
+                selected={selectedRange}
+                onSelect={setSelectedRange}
+                onEdit={handleEdit}
+              />
+              
+              {/* 통계 패널 그리드 (상단 작은 카드) */}
+              <div 
+                ref={statContainerRef}
+                className="stats-container"
+                id="stats-container"
               >
-                {config.content}
-              </Panel>
-            )
-          })}
-          </div>
-          
-          {/* 메인 패널 그리드 */}
-          <div 
-            ref={containerRef}
-            className="dashboard-container"
-            id="dashboard-container"
-          >
-        {panelOrder
-          .filter(orderIndex => panelConfigs[orderIndex] && !hiddenPanels.includes(panelConfigs[orderIndex].id))
-          .map((orderIndex, index) => {
-            const config = panelConfigs[orderIndex]
-            if (!config) return null
-            
-            // Vibration Sensor 패널의 경우에만 최신 온도값 계산 (이전값 유지)
-            let temperatureValue = null
-            if (config.id === 'panel7') {
-              temperatureValue = vibrationTemperatureRef.current // 기본값은 이전값
-              if (vibrationHistory.temperature && vibrationHistory.temperature.length > 0) {
-                // 배열에서 유효한 최신값 찾기 (뒤에서부터)
-                for (let i = vibrationHistory.temperature.length - 1; i >= 0; i--) {
-                  const temp = vibrationHistory.temperature[i]
-                  if (temp !== null && temp !== undefined && !isNaN(temp)) {
-                    temperatureValue = temp
-                    vibrationTemperatureRef.current = temp // ref 업데이트
-                    break
+            {statPanelOrder
+              .filter(orderIndex => statPanelConfigs[orderIndex] && !hiddenStatPanels.includes(statPanelConfigs[orderIndex].id))
+              .map((orderIndex, index) => {
+                const config = statPanelConfigs[orderIndex]
+                if (!config) return null
+                return (
+                  <Panel 
+                    key={config.id}
+                    id={config.id}
+                    index={index}
+                    title={config.title}
+                    subtitle={null}
+                    size={statPanelSizes[config.id]}
+                    onSizeChange={handleStatSizeChange}
+                    isDragging={isStatDragging}
+                    onModalOpen={() => setIsModalOpen(true)}
+                    onModalClose={() => setIsModalOpen(false)}
+                    onHide={() => handleHideStatPanel(config.id)}
+                    showCsv={false}
+                  >
+                    {config.content}
+                  </Panel>
+                )
+              })}
+              </div>
+              
+              {/* 메인 패널 그리드 */}
+              <div 
+                ref={containerRef}
+                className="dashboard-container"
+                id="dashboard-container"
+              >
+            {panelOrder
+              .filter(orderIndex => panelConfigs[orderIndex] && !hiddenPanels.includes(panelConfigs[orderIndex].id))
+              .map((orderIndex, index) => {
+                const config = panelConfigs[orderIndex]
+                if (!config) return null
+                
+                // Vibration Sensor 패널의 경우에만 최신 온도값 계산 (이전값 유지)
+                let temperatureValue = null
+                if (config.id === 'panel7') {
+                  temperatureValue = vibrationTemperatureRef.current // 기본값은 이전값
+                  if (vibrationHistory.temperature && vibrationHistory.temperature.length > 0) {
+                    // 배열에서 유효한 최신값 찾기 (뒤에서부터)
+                    for (let i = vibrationHistory.temperature.length - 1; i >= 0; i--) {
+                      const temp = vibrationHistory.temperature[i]
+                      if (temp !== null && temp !== undefined && !isNaN(temp)) {
+                        temperatureValue = temp
+                        vibrationTemperatureRef.current = temp // ref 업데이트
+                        break
+                      }
+                    }
                   }
                 }
-              }
-            }
-            
-            return (
-              <Panel 
-                key={config.id}
-                id={config.id}
-                index={index}
-                title={config.title}
-                subtitle={null}
-                size={panelSizes[config.id]}
-                onSizeChange={handleSizeChange}
-                isDragging={isDragging}
-                onModalOpen={() => setIsModalOpen(true)}
-                onModalClose={() => setIsModalOpen(false)}
-                onHide={() => handleHidePanel(config.id)}
-                temperature={config.id === 'panel7' ? temperatureValue : null}
-              >
-                {config.content}
-              </Panel>
-            )
-          })}
-          </div>
+                
+                return (
+                  <Panel 
+                    key={config.id}
+                    id={config.id}
+                    index={index}
+                    title={config.title}
+                    subtitle={null}
+                    size={panelSizes[config.id]}
+                    onSizeChange={handleSizeChange}
+                    isDragging={isDragging}
+                    onModalOpen={() => setIsModalOpen(true)}
+                    onModalClose={() => setIsModalOpen(false)}
+                    onHide={() => handleHidePanel(config.id)}
+                    temperature={config.id === 'panel7' ? temperatureValue : null}
+                  >
+                    {config.content}
+                  </Panel>
+                )
+              })}
+              </div>
+            </>
+          )}
           
           <EditModal
             isOpen={isEditModalOpen}
             onClose={() => setIsEditModalOpen(false)}
-            hiddenPanels={[...hiddenPanels, ...hiddenStatPanels]}
+            hiddenPanels={[...hiddenPanels, ...hiddenStatPanels, ...hiddenMainPanels]}
             panelConfigs={[...panelConfigs, ...statPanelConfigs]}
             onShowPanel={(panelId) => {
               // 통계 패널인지 확인
               if (panelId.startsWith('stat-panel')) {
                 handleShowStatPanel(panelId)
+              } else if (panelId.startsWith('main-panel')) {
+                handleShowMainPanel(panelId)
               } else {
                 handleShowPanel(panelId)
               }

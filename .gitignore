@@ -23,3 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+
+# AI/ML 관련
+ai_ml/venv/
+ai_ml/data/
+ai_ml/models/
+ai_ml/scripts/__pycache__/
+*.pyc
+__pycache__/

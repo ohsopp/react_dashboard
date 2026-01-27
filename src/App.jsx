@@ -5,11 +5,12 @@ import { Panel, TopBar, DataRangeSelector, EditModal } from './components'
 import MainPage from './components/dashboard/MainPage/MainPage'
 import ShiftReport from './components/dashboard/ShiftReport/ShiftReport'
 import SensorInformation from './components/dashboard/SensorInformation/SensorInformation'
+import AIPrediction from './components/dashboard/AIPrediction/AIPrediction'
 import { useSensorData } from './hooks/useSensorData'
 import { usePanelConfigs } from './hooks/usePanelConfigs'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('main') // 'main', 'sensor', or 'sensorInfo'
+  const [activeTab, setActiveTab] = useState('main') // 'main', 'sensor', 'sensorInfo', or 'ai'
   const [selectedRange, setSelectedRange] = useState('1h')
   
   // Machine #1 공통 데이터 상태
@@ -733,12 +734,28 @@ function App() {
     setIsEditModalOpen(true)
   }
 
+  // activeTab에 따른 breadcrumb 설정
+  const getBreadcrumbItems = () => {
+    switch (activeTab) {
+      case 'main':
+        return null // 홈 탭에서는 breadcrumb 표시 안 함
+      case 'sensor':
+        return ['Home', 'Dashboards', 'Sensor Data']
+      case 'sensorInfo':
+        return ['Home', 'Dashboards', 'Sensor Information']
+      case 'ai':
+        return ['Home', 'Dashboards', 'AI Prediction']
+      default:
+        return ['Home', 'Dashboards', 'Sensor Data']
+    }
+  }
+
   return (
     <div className="App">
       <TopBar
-        timeRange={selectedRange}
-        onRefresh={() => fetchTemperatureHistory(selectedRange)}
-        breadcrumbItems={['Home', 'Dashboards', 'Sensor Data']}
+        timeRange={activeTab === 'sensor' ? selectedRange : undefined}
+        onRefresh={activeTab === 'sensor' ? () => fetchTemperatureHistory(selectedRange) : undefined}
+        breadcrumbItems={getBreadcrumbItems()}
       />
       
       <div className="app-content-wrapper">
@@ -774,6 +791,17 @@ function App() {
               <path d="M12 8h.01"></path>
             </svg>
           </div>
+          <div 
+            className={`sidebar-tab ${activeTab === 'ai' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ai')}
+            title="AI Prediction"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+              <path d="M2 17l10 5 10-5"></path>
+              <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
         </div>
         <div className="app-main">
           {activeTab === 'main' ? (
@@ -796,6 +824,8 @@ function App() {
             />
           ) : activeTab === 'sensorInfo' ? (
             <SensorInformation />
+          ) : activeTab === 'ai' ? (
+            <AIPrediction selectedRange={selectedRange} />
           ) : (
             <>
               <DataRangeSelector
@@ -918,15 +948,13 @@ function App() {
                     <div className="panel-header-left">
                       <h2 className="panel-title">Shift Report</h2>
                     </div>
-                    <div className="panel-header-right">
-                      <button 
-                        className="panel-modal-close" 
-                        onClick={() => setIsShiftReportOpen(false)}
-                      >
-                        ×
-                      </button>
-                    </div>
                   </div>
+                  <button 
+                    className="panel-modal-close" 
+                    onClick={() => setIsShiftReportOpen(false)}
+                  >
+                    ×
+                  </button>
                 </div>
                 <div className="panel-modal-content" style={{ padding: '0', overflow: 'auto' }}>
                   <ShiftReport machineData={machineData} />

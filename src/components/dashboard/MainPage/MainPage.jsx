@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
 import Sortable from 'sortablejs'
-import { Panel, DataRangeSelector } from '../../index'
+import { Panel } from '../../index'
 import MotorForward from '../MotorForward/MotorForward'
 import Counter from '../Counter/Counter'
 import DieProtection from '../DieProtection/DieProtection'
@@ -124,11 +124,6 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
 
   return (
     <>
-      <DataRangeSelector
-        selected={selectedRange}
-        onSelect={onSelectRange}
-        onEdit={onEdit}
-      />
       <div className="main-page-container" ref={containerRef}>
         {orderedConfigs
           .filter(config => !hiddenPanels.includes(config.id))

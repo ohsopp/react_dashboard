@@ -15,15 +15,26 @@ export const useSensorData = (selectedRange) => {
   const abortControllerRef = useRef(null)
   const selectedRangeRef = useRef(selectedRange)
   const vibrationTemperatureRef = useRef(null)
+  const isFetchingRef = useRef(false)  // 요청 진행 중 플래그
 
   // InfluxDB에서 온도 히스토리 데이터 가져오기
   const fetchTemperatureHistory = useCallback(async (range) => {
     const targetRange = range || selectedRangeRef.current
     
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
+    // 이미 요청이 진행 중이면 스킵 (중복 요청 방지)
+    if (isFetchingRef.current) {
+      return
     }
     
+    // 이전 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      // abort 후 약간의 지연 (취소된 요청이 완전히 정리될 시간)
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    
+    isFetchingRef.current = true
     const abortController = new AbortController()
     abortControllerRef.current = abortController
     const requestRange = targetRange
@@ -53,6 +64,12 @@ export const useSensorData = (selectedRange) => {
       if (error.name !== 'AbortError') {
         console.error('온도 히스토리 데이터 가져오기 실패:', error)
       }
+    } finally {
+      // 요청 완료 후 플래그 해제
+      if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null
+      }
+      isFetchingRef.current = false
     }
   }, [])
 
@@ -60,23 +77,33 @@ export const useSensorData = (selectedRange) => {
   useEffect(() => {
     selectedRangeRef.current = selectedRange
     
+    // 이전 요청 취소
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
+      abortControllerRef.current = null
     }
+    isFetchingRef.current = false
     
     setTemperatureHistory({ timestamps: [], values: [] })
     setDataZoomRange({ start: 0, end: 100 })
-    fetchTemperatureHistory(selectedRangeRef.current)
+    
+    // 약간의 지연 후 새 요청 시작 (취소된 요청이 정리될 시간 확보)
+    const timeoutId = setTimeout(() => {
+      fetchTemperatureHistory(selectedRangeRef.current)
+    }, 100)
     
     const interval = setInterval(() => {
       fetchTemperatureHistory(selectedRangeRef.current)
     }, 5000)
 
     return () => {
+      clearTimeout(timeoutId)
       clearInterval(interval)
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
+        abortControllerRef.current = null
       }
+      isFetchingRef.current = false
     }
   }, [selectedRange, fetchTemperatureHistory])
 

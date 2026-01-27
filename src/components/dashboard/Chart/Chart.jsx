@@ -53,7 +53,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   }, []);
   
   // 공통 차트 리사이즈 훅
-  const useChartResize = (chartRef, containerRef) => {
+  const useChartResize = (chartRef, containerRef, isYAxisFixed, fixYAxisRef) => {
     useEffect(() => {
       if (!containerRef.current || !chartRef.current) return;
       
@@ -81,6 +81,13 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
                 } else {
                   echartsInstance.resize();
                 }
+                
+                // y축이 고정된 경우 resize 후 y축을 다시 고정
+                if (isYAxisFixed && fixYAxisRef && fixYAxisRef.current) {
+                  setTimeout(() => {
+                    fixYAxisRef.current();
+                  }, 50);
+                }
               }
             } catch (error) {
               // 차트가 아직 초기화되지 않았을 수 있음
@@ -97,7 +104,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         }
         resizeObserver.disconnect();
       };
-    }, []);
+    }, [isYAxisFixed]);
   };
   // 미니 그래프 (통계 패널 배경용)
   if (type === 'mini') {
@@ -1185,6 +1192,8 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   
   const echartsOption = useMemo(() => ({
     animation: false, // 실시간 업데이트를 위해 애니메이션 비활성화
+    animationDuration: 0, // 애니메이션 완전히 비활성화
+    animationDurationUpdate: 0, // 업데이트 애니메이션 비활성화
     grid: {
       ...defaultGrid,
       ...(options?.grid || {}) // options의 grid가 있으면 병합
@@ -1372,10 +1381,14 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           : (isInModal ? 14 : 10),
         ...(options?.yAxis?.nameTextStyle || {})
       },
-      boundaryGap: [0, '10%'], // 상단에 10% 여유 공간
-      scale: datasets.length > 1 ? true : false, // 진동센서는 scale 사용
-      min: datasets.length > 1 ? undefined : yAxisMin, // 진동센서는 자동 범위
-      max: datasets.length > 1 ? undefined : yAxisMax, // 진동센서는 자동 범위
+      // scale이 false이고 min/max가 설정된 경우 boundaryGap을 0으로 설정하여 y축 고정
+      boundaryGap: (options?.yAxis?.scale === false && options?.yAxis?.min !== undefined && options?.yAxis?.max !== undefined) 
+        ? [0, 0] 
+        : [0, '10%'], // 상단에 10% 여유 공간
+      // options에서 min/max가 명시적으로 전달되면 그것을 우선 사용
+      scale: options?.yAxis?.scale !== undefined ? options.yAxis.scale : (datasets.length > 1 ? true : false), // 진동센서는 scale 사용
+      min: options?.yAxis?.min !== undefined ? options.yAxis.min : (datasets.length > 1 ? undefined : yAxisMin), // 진동센서는 자동 범위
+      max: options?.yAxis?.max !== undefined ? options.yAxis.max : (datasets.length > 1 ? undefined : yAxisMax), // 진동센서는 자동 범위
       axisLine: {
         show: false
       },
@@ -1402,7 +1415,13 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
         formatter: datasets.length > 1 ? '{value}' : '{value}°C', // 진동센서는 단위 없음
         ...(options?.yAxis?.axisLabel || {})
       },
-      ...(options?.yAxis || {})
+      // options.yAxis의 다른 속성들은 이미 위에서 처리했으므로, min/max/scale만 병합
+      // 나머지 속성은 필터링하여 중복 병합 방지
+      ...(options?.yAxis ? Object.fromEntries(
+        Object.entries(options.yAxis).filter(([key]) => 
+          !['min', 'max', 'scale', 'axisLabel', 'splitLine', 'nameTextStyle', 'name'].includes(key)
+        )
+      ) : {})
     },
     series: datasets.map((ds, index) => {
       // 진동센서용 색상 (v-RMS, a-Peak, a-RMS, Crest)
@@ -1483,6 +1502,115 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
 
   const chartRef = useRef(null);
   const isUpdatingFromProps = useRef(false);
+  
+  // y축이 고정된 경우 데이터 업데이트 시에도 y축 범위를 유지
+  const isYAxisFixed = options?.yAxis?.scale === false && 
+                       options?.yAxis?.min !== undefined && 
+                       options?.yAxis?.max !== undefined;
+  
+  // y축을 강제로 고정하는 함수
+  const fixYAxis = useRef(() => {
+    if (!isYAxisFixed) return;
+    
+    if (chartRef.current && chartRef.current.getEchartsInstance) {
+      try {
+        const echartsInstance = chartRef.current.getEchartsInstance();
+        if (!echartsInstance) return;
+        
+        if (echartsInstance.isDisposed && echartsInstance.isDisposed()) return;
+        
+        // 현재 옵션 가져오기
+        const currentOption = echartsInstance.getOption();
+        const currentYAxis = currentOption.yAxis?.[0];
+        
+        // y축 범위가 변경되었는지 확인
+        if (currentYAxis && (
+          currentYAxis.min !== options.yAxis.min || 
+          currentYAxis.max !== options.yAxis.max ||
+          currentYAxis.scale !== false
+        )) {
+          // y축을 명시적으로 고정된 값으로 설정
+          echartsInstance.setOption({
+            yAxis: {
+              ...currentYAxis,
+              min: options.yAxis.min,
+              max: options.yAxis.max,
+              scale: false
+            }
+          }, {
+            notMerge: false,
+            lazyUpdate: false
+          });
+        }
+      } catch (error) {
+        // 에러는 무시 (차트가 아직 준비되지 않았을 수 있음)
+      }
+    }
+  });
+  
+  // y축 고정 로직 업데이트
+  useEffect(() => {
+    fixYAxis.current = () => {
+      if (!isYAxisFixed) return;
+      
+      if (chartRef.current && chartRef.current.getEchartsInstance) {
+        try {
+          const echartsInstance = chartRef.current.getEchartsInstance();
+          if (!echartsInstance) return;
+          
+          if (echartsInstance.isDisposed && echartsInstance.isDisposed()) return;
+          
+          // 현재 옵션 가져오기
+          const currentOption = echartsInstance.getOption();
+          const currentYAxis = currentOption.yAxis?.[0];
+          
+          // y축 범위가 변경되었는지 확인
+          if (currentYAxis && (
+            currentYAxis.min !== options.yAxis.min || 
+            currentYAxis.max !== options.yAxis.max ||
+            currentYAxis.scale !== false
+          )) {
+            // y축을 명시적으로 고정된 값으로 설정
+            echartsInstance.setOption({
+              yAxis: {
+                ...currentYAxis,
+                min: options.yAxis.min,
+                max: options.yAxis.max,
+                scale: false
+              }
+            }, {
+              notMerge: false,
+              lazyUpdate: false
+            });
+          }
+        } catch (error) {
+          // 에러는 무시
+        }
+      }
+    };
+  }, [isYAxisFixed, options?.yAxis?.min, options?.yAxis?.max]);
+  
+  // 데이터가 변경될 때마다 y축 고정
+  useEffect(() => {
+    if (!isYAxisFixed) return;
+    
+    const timer = setTimeout(() => {
+      fixYAxis.current();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [data.labels, data.timestamps, datasets, isYAxisFixed]);
+  
+  // 주기적으로 y축을 체크하고 고정 (매 200ms마다)
+  useEffect(() => {
+    if (!isYAxisFixed) return;
+    
+    const interval = setInterval(() => {
+      fixYAxis.current();
+    }, 200);
+    
+    return () => clearInterval(interval);
+  }, [isYAxisFixed]);
   
   // props가 변경되면 차트에 즉시 반영
   useEffect(() => {
@@ -1566,7 +1694,7 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
   };
 
   const lineContainerRef = useRef(null);
-  useChartResize(chartRef, lineContainerRef);
+  useChartResize(chartRef, lineContainerRef, isYAxisFixed, fixYAxis);
   
   // containerRef를 lineContainerRef에 연결
   useEffect(() => {
@@ -1619,6 +1747,57 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
     };
   }, [isInModal]);
 
+
+  // 차트가 준비된 후 y축을 고정하는 콜백
+  const onChartReady = useRef((echartsInstance) => {
+    if (isYAxisFixed && options?.yAxis?.min !== undefined && options?.yAxis?.max !== undefined) {
+      // 차트가 준비되면 y축을 고정
+      setTimeout(() => {
+        try {
+          echartsInstance.setOption({
+            yAxis: {
+              min: options.yAxis.min,
+              max: options.yAxis.max,
+              scale: false
+            }
+          }, {
+            notMerge: false,
+            lazyUpdate: false
+          });
+          // 주기적으로 체크 시작
+          fixYAxis.current();
+        } catch (error) {
+          // 에러 무시
+        }
+      }, 100);
+    }
+  });
+  
+  // onChartReady 콜백 업데이트
+  useEffect(() => {
+    onChartReady.current = (echartsInstance) => {
+      if (isYAxisFixed && options?.yAxis?.min !== undefined && options?.yAxis?.max !== undefined) {
+        setTimeout(() => {
+          try {
+            echartsInstance.setOption({
+              yAxis: {
+                min: options.yAxis.min,
+                max: options.yAxis.max,
+                scale: false
+              }
+            }, {
+              notMerge: false,
+              lazyUpdate: false
+            });
+            fixYAxis.current();
+          } catch (error) {
+            // 에러 무시
+          }
+        }, 100);
+      }
+    };
+  }, [isYAxisFixed, options?.yAxis?.min, options?.yAxis?.max]);
+
   return (
     <div 
       ref={lineContainerRef}
@@ -1634,9 +1813,10 @@ const Chart = ({ type = 'line', data, options, className = '', dataZoomStart, da
           renderer: 'svg',
           preventDefaultMouseMove: isInModal // 모달 내부에서만 마우스 이동 시 preventDefault
         }}
-        notMerge={true}
+        notMerge={!isYAxisFixed} // y축이 고정된 경우 false로 설정하여 y축 범위 유지
         lazyUpdate={true}
         onEvents={onEvents}
+        onChartReady={onChartReady.current}
       />
     </div>
   );

@@ -786,23 +786,27 @@ function App() {
   const getBreadcrumbItems = () => {
     switch (activeTab) {
       case 'main':
-        return null // 홈 탭에서는 breadcrumb 표시 안 함
+        return ['Main']
       case 'sensor':
-        return ['Home', 'Dashboards', 'Sensor Data']
+        return ['Sensor']
       case 'sensorInfo':
-        return ['Home', 'Dashboards', 'Sensor Information']
+        return ['Sensor Information']
       case 'ai':
-        return ['Home', 'Dashboards', 'AI Prediction']
+        return ['AI Machine Learning']
       default:
-        return ['Home', 'Dashboards', 'Sensor Data']
+        return ['Sensor']
     }
   }
 
   return (
     <div className="App">
       <TopBar
-        timeRange={activeTab === 'sensor' ? selectedRange : undefined}
-        onRefresh={activeTab === 'sensor' ? () => fetchTemperatureHistory(selectedRange) : undefined}
+        timeRange={activeTab === 'sensor' || activeTab === 'ai' ? selectedRange : undefined}
+        onRefresh={activeTab === 'sensor' ? () => fetchTemperatureHistory(selectedRange) : activeTab === 'ai' ? () => {
+          // AI 탭 새로고침은 AIPrediction 컴포넌트에서 처리
+          const event = new CustomEvent('ai-refresh')
+          window.dispatchEvent(event)
+        } : undefined}
         breadcrumbItems={getBreadcrumbItems()}
       />
       
@@ -829,17 +833,6 @@ function App() {
             </svg>
           </div>
           <div 
-            className={`sidebar-tab ${activeTab === 'sensorInfo' ? 'active' : ''}`}
-            onClick={() => setActiveTab('sensorInfo')}
-            title="Sensor Information"
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <path d="M12 16v-4"></path>
-              <path d="M12 8h.01"></path>
-            </svg>
-          </div>
-          <div 
             className={`sidebar-tab ${activeTab === 'ai' ? 'active' : ''}`}
             onClick={() => setActiveTab('ai')}
             title="AI Prediction"
@@ -848,6 +841,17 @@ function App() {
               <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
               <path d="M2 17l10 5 10-5"></path>
               <path d="M2 12l10 5 10-5"></path>
+            </svg>
+          </div>
+          <div 
+            className={`sidebar-tab ${activeTab === 'sensorInfo' ? 'active' : ''}`}
+            onClick={() => setActiveTab('sensorInfo')}
+            title="Sensor Information"
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 16v-4"></path>
+              <path d="M12 8h.01"></path>
             </svg>
           </div>
         </div>
@@ -877,7 +881,14 @@ function App() {
           ) : activeTab === 'sensorInfo' ? (
             <SensorInformation />
           ) : activeTab === 'ai' ? (
-            <AIPrediction selectedRange={selectedRange} />
+            <>
+              <DataRangeSelector
+                selected={selectedRange}
+                onSelect={setSelectedRange}
+                onEdit={handleEdit}
+              />
+              <AIPrediction selectedRange={selectedRange} onSelectRange={setSelectedRange} />
+            </>
           ) : (
             <>
               <DataRangeSelector

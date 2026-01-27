@@ -30,6 +30,42 @@ function App() {
     targetParts: 4800,
     actualParts: 4230
   })
+
+  // Machine #2 공통 데이터 상태
+  const [machineData2, setMachineData2] = useState({
+    timer: 0,
+    dieNo: 58,
+    producedParts: 920,
+    strokeRate: 21,
+    productionEfficiency: 68, // OEE로 사용
+    status: 'PRODUCING',
+    dieProtection: true,
+    // Shift Report용 계산된 값들
+    quality: 75,
+    performance: 82,
+    availability: 68,
+    oee: 68, // productionEfficiency와 동일
+    targetParts: 5000,
+    actualParts: 4450
+  })
+
+  // Machine #3 공통 데이터 상태
+  const [machineData3, setMachineData3] = useState({
+    timer: 0,
+    dieNo: 55,
+    producedParts: 1025,
+    strokeRate: 0,
+    productionEfficiency: 0, // OEE로 사용
+    status: 'STOPPED',
+    dieProtection: false,
+    // Shift Report용 계산된 값들
+    quality: 0,
+    performance: 0,
+    availability: 0,
+    oee: 0, // productionEfficiency와 동일
+    targetParts: 5200,
+    actualParts: 0
+  })
   
   // 센서 데이터 훅 사용
   const {
@@ -179,10 +215,12 @@ function App() {
   
   // Main 패널 사이즈 관리
   const [mainPanelSizes, setMainPanelSizes] = useState({
-    'main-panel1': 4,
-    'main-panel2': 4,
-    'main-panel3': 4,
-    'main-panel4': 4
+    'main-panel1': 3, // Motor Forward: 1/4
+    'main-panel2': 12, // Die Protection: 전체
+    'main-panel3': 3, // Counter: 1/4
+    'main-panel4': 3, // Machine #1: 1/4
+    'main-panel5': 3, // Machine #2: 1/4
+    'main-panel6': 3  // Machine #3: 1/4
   })
   
   // Main 패널 순서 관리
@@ -192,13 +230,23 @@ function App() {
     try {
       const saved = localStorage.getItem('main-panel-order')
       if (saved) {
-        return JSON.parse(saved)
+        const parsed = JSON.parse(saved)
+        // Machine #2 (인덱스 4)가 없으면 추가
+        let updated = parsed
+        if (!updated.includes(4)) {
+          updated = [...updated, 4]
+        }
+        // Machine #3 (인덱스 5)가 없으면 추가
+        if (!updated.includes(5)) {
+          updated = [...updated, 5]
+        }
+        return updated
       }
     } catch (e) {
       console.error('메인 패널 순서 로드 실패:', e)
     }
-    // 기본 순서: [Machine #1, Motor Forward, Die Protection, Counter]
-    return [3, 0, 1, 2]
+    // 기본 순서: [Machine #1, Machine #2, Machine #3, Motor Forward, Counter, Die Protection]
+    return [3, 4, 5, 0, 2, 1]
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,
@@ -821,6 +869,10 @@ function App() {
               onChartClick={() => setIsShiftReportOpen(true)}
               machineData={machineData}
               setMachineData={setMachineData}
+              machineData2={machineData2}
+              setMachineData2={setMachineData2}
+              machineData3={machineData3}
+              setMachineData3={setMachineData3}
             />
           ) : activeTab === 'sensorInfo' ? (
             <SensorInformation />

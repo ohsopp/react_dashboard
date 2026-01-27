@@ -3,16 +3,27 @@ import './MachineStatus.css'
 
 const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
   // 공통 데이터 사용
-  const timer = machineData?.timer || 0
-  const dieNo = machineData?.dieNo || 62
-  const producedParts = machineData?.producedParts || 835
-  const strokeRate = machineData?.strokeRate || 19
-  const productionEfficiency = machineData?.productionEfficiency || 65
-  const status = machineData?.status || 'PRODUCING'
-  const dieProtection = machineData?.dieProtection || true
+  const timer = machineData?.timer ?? 0
+  const dieNo = machineData?.dieNo ?? 62
+  const producedParts = machineData?.producedParts ?? 835
+  const strokeRate = machineData?.strokeRate ?? 19
+  const productionEfficiency = machineData?.productionEfficiency ?? 65
+  const status = machineData?.status ?? 'PRODUCING'
+  const dieProtection = machineData?.dieProtection ?? true
 
-  // 타이머 업데이트 (1초마다)
+  // 타이머 업데이트 (1초마다) - STOPPED 상태일 때는 업데이트 안 함
   useEffect(() => {
+    if (status === 'STOPPED') {
+      // STOPPED 상태일 때는 타이머를 0으로 고정
+      if (setMachineData) {
+        setMachineData(prev => ({
+          ...prev,
+          timer: 0
+        }))
+      }
+      return
+    }
+    
     const interval = setInterval(() => {
       if (setMachineData) {
         setMachineData(prev => ({
@@ -22,7 +33,7 @@ const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
       }
     }, 1000)
     return () => clearInterval(interval)
-  }, [setMachineData])
+  }, [setMachineData, status])
 
   // 생산 중일 때 produced parts와 stroke rate 업데이트
   useEffect(() => {
@@ -65,8 +76,20 @@ const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
         return '#fbbf24' // 노란색
       case 'ERROR':
         return '#ef4444' // 빨간색
+      case 'STOPPED':
+        return '#6b7280' // 회색
       default:
         return '#6b7280' // 회색
+    }
+  }
+
+  // 상태 표시 텍스트
+  const getStatusText = () => {
+    switch (status) {
+      case 'STOPPED':
+        return 'STOPPED'
+      default:
+        return status
     }
   }
 
@@ -85,7 +108,7 @@ const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
           className="status-badge"
           style={{ backgroundColor: getStatusColor() }}
         >
-          {status}
+          {getStatusText()}
         </div>
         <div className="timer">{formatTimer(timer)}</div>
       </div>
@@ -107,15 +130,22 @@ const MachineStatus = memo(({ onChartClick, machineData, setMachineData }) => {
       </div>
 
       {/* Die Protection 상태 */}
-      {dieProtection && (
-        <div className="die-protection-status">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <circle cx="8" cy="8" r="7" fill="#4ade80" />
+      <div 
+        className="die-protection-status"
+        style={{
+          color: dieProtection ? "#4ade80" : "#9ca3af",
+          background: dieProtection ? "rgba(74, 222, 128, 0.1)" : "rgba(107, 114, 128, 0.1)",
+          borderColor: dieProtection ? "rgba(74, 222, 128, 0.2)" : "rgba(107, 114, 128, 0.2)"
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="7" fill={dieProtection ? "#4ade80" : "#6b7280"} />
+          {dieProtection && (
             <path d="M5 8L7 10L11 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <span>금형 보호 활성화</span>
-        </div>
-      )}
+          )}
+        </svg>
+        <span>{dieProtection ? "금형 보호 활성화" : "금형 보호 비활성화"}</span>
+      </div>
 
       {/* 차트 버튼 - 금형 보호 아래 */}
       {onChartClick && (

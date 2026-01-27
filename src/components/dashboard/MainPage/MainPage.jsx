@@ -7,7 +7,7 @@ import DieProtection from '../DieProtection/DieProtection'
 import MachineStatus from '../MachineStatus/MachineStatus'
 import './MainPage.css'
 
-const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit, onChartClick, machineData, setMachineData }) => {
+const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit, onChartClick, machineData, setMachineData, machineData2, setMachineData2, machineData3, setMachineData3 }) => {
   const containerRef = useRef(null)
   const sortableInstance = useRef(null)
   const [isMainDragging, setIsMainDragging] = useState(false)
@@ -31,6 +31,16 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
     {
       id: 'main-panel4',
       title: 'Machine #1',
+      content: <MachineStatus />
+    },
+    {
+      id: 'main-panel5',
+      title: 'Machine #2',
+      content: <MachineStatus />
+    },
+    {
+      id: 'main-panel6',
+      title: 'Machine #3',
       content: <MachineStatus />
     }
   ], [])
@@ -139,7 +149,7 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
               isDragging={isMainDragging}
               onModalOpen={onModalOpen}
               onModalClose={onModalClose}
-              onHide={onHide}
+              onHide={null}
               showCsv={false}
             >
               {config.id === 'main-panel4' && onChartClick ? (
@@ -147,6 +157,18 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
                   onChartClick={onChartClick}
                   machineData={machineData}
                   setMachineData={setMachineData}
+                />
+              ) : config.id === 'main-panel5' && onChartClick ? (
+                <MachineStatus 
+                  onChartClick={onChartClick}
+                  machineData={machineData2}
+                  setMachineData={setMachineData2}
+                />
+              ) : config.id === 'main-panel6' && onChartClick ? (
+                <MachineStatus 
+                  onChartClick={onChartClick}
+                  machineData={machineData3}
+                  setMachineData={setMachineData3}
                 />
               ) : (
                 config.content

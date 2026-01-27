@@ -21,4 +21,16 @@
   grid-row: span 3;
   min-height: 500px;
 }
+
+/* Machine #2 패널도 세로 3칸 차지 */
+#main-panel5 {
+  grid-row: span 3;
+  min-height: 500px;
+}
+
+/* Machine #3 패널도 세로 3칸 차지 */
+#main-panel6 {
+  grid-row: span 3;
+  min-height: 500px;
+}
 ㄴ

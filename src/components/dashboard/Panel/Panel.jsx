@@ -212,14 +212,14 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
           <PanelHeader
             title={title}
             subtitle={subtitle}
-            onHide={onHide}
+            onHide={id?.startsWith('main-panel') ? null : onHide}
             onCsvClick={() => setIsCsvModalOpen(true)}
-            showCsv={id && !id.startsWith('stat-panel') && id !== 'panel8'}
-            showExtension={id !== 'panel8'}
+            showCsv={id && !id.startsWith('stat-panel') && id !== 'panel8' && !id?.startsWith('main-panel')}
+            showExtension={id !== 'panel8' && !id?.startsWith('main-panel')}
             temperature={temperature}
           >
             {/* 확장 버튼을 헤더 내부로 이동 */}
-            {!id?.startsWith('stat-panel') && id !== 'panel8' && showExtensionButton && (
+            {!id?.startsWith('stat-panel') && id !== 'panel8' && !id?.startsWith('main-panel') && showExtensionButton && (
               <button
                 ref={extensionButtonRef}
                 className="panel-extension-button"

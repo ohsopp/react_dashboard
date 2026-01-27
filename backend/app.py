@@ -1257,5 +1257,548 @@ def export_vibration_csv():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# AI 관련 API 엔드포인트
+@app.route('/api/ai/augmented/temperature', methods=['GET'])
+def get_augmented_temperature():
+    """증강된 온도 데이터 조회"""
+    try:
+        if influx_client is None:
+            return jsonify({'error': 'InfluxDB not connected'}), 500
+        
+        range_param = request.args.get('range', '1h')
+        query_api = influx_client.query_api()
+        
+        now = datetime.utcnow()
+        if range_param == '1h':
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        elif range_param == '6h':
+            start_time = now - timedelta(hours=6)
+            window_interval = '1m'
+        elif range_param == '24h':
+            start_time = now - timedelta(hours=24)
+            window_interval = '5m'
+        elif range_param == '7d':
+            start_time = now - timedelta(days=7)
+            window_interval = '30m'
+        else:
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        
+        start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        query = f'''
+        from(bucket: "temperature_augmented")
+          |> range(start: {start_time_str})
+          |> filter(fn: (r) => r["_measurement"] == "temperature")
+          |> filter(fn: (r) => r["_field"] == "value")
+          |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
+          |> yield(name: "mean")
+        '''
+        
+        result = query_api.query(org=INFLUXDB_ORG, query=query)
+        
+        timestamps = []
+        values = []
+        
+        for table in result:
+            for record in table.records:
+                timestamp = record.get_time().timestamp() * 1000
+                value = record.get_value()
+                timestamps.append(timestamp)
+                values.append(value if value is not None else None)
+        
+        if timestamps and values:
+            sorted_data = sorted(zip(timestamps, values))
+            timestamps, values = zip(*sorted_data)
+            timestamps = list(timestamps)
+            values = list(values)
+        
+        return jsonify({
+            'timestamps': timestamps,
+            'values': values,
+            'count': len(values)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error querying augmented temperature: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/augmented/vibration', methods=['GET'])
+def get_augmented_vibration():
+    """증강된 진동 데이터 조회"""
+    try:
+        if influx_client is None:
+            return jsonify({'error': 'InfluxDB not connected'}), 500
+        
+        range_param = request.args.get('range', '1h')
+        query_api = influx_client.query_api()
+        
+        now = datetime.utcnow()
+        if range_param == '1h':
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        elif range_param == '6h':
+            start_time = now - timedelta(hours=6)
+            window_interval = '1m'
+        elif range_param == '24h':
+            start_time = now - timedelta(hours=24)
+            window_interval = '5m'
+        elif range_param == '7d':
+            start_time = now - timedelta(days=7)
+            window_interval = '30m'
+        else:
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        
+        start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        query = f'''
+        from(bucket: "vibration_augmented")
+          |> range(start: {start_time_str})
+          |> filter(fn: (r) => r["_measurement"] == "vibration")
+          |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest" or r["_field"] == "temperature")
+          |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
+          |> yield(name: "mean")
+        '''
+        
+        result = query_api.query(org=INFLUXDB_ORG, query=query)
+        
+        timestamps = []
+        v_rms_values = []
+        a_peak_values = []
+        a_rms_values = []
+        crest_values = []
+        temperature_values = []
+        
+        for table in result:
+            for record in table.records:
+                timestamp_ms = int(record.get_time().timestamp() * 1000)
+                field = record.get_field()
+                value = record.get_value()
+                
+                if timestamp_ms not in timestamps:
+                    timestamps.append(timestamp_ms)
+                    v_rms_values.append(None)
+                    a_peak_values.append(None)
+                    a_rms_values.append(None)
+                    crest_values.append(None)
+                    temperature_values.append(None)
+                
+                idx = timestamps.index(timestamp_ms)
+                
+                if field == 'v_rms':
+                    v_rms_values[idx] = value
+                elif field == 'a_peak':
+                    a_peak_values[idx] = value
+                elif field == 'a_rms':
+                    a_rms_values[idx] = value
+                elif field == 'crest':
+                    crest_values[idx] = value
+                elif field == 'temperature':
+                    temperature_values[idx] = value
+        
+        sorted_data = sorted(zip(timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values))
+        if sorted_data:
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = zip(*sorted_data)
+        else:
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = [], [], [], [], [], []
+        
+        return jsonify({
+            'timestamps': list(timestamps),
+            'v_rms': list(v_rms_values),
+            'a_peak': list(a_peak_values),
+            'a_rms': list(a_rms_values),
+            'crest': list(crest_values),
+            'temperature': list(temperature_values)
+        })
+    except Exception as e:
+        print(f"❌ Error querying augmented vibration: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/augment', methods=['POST'])
+def run_data_augmentation():
+    """데이터 증강 실행"""
+    try:
+        import sys
+        import os
+        import subprocess
+        
+        # ai_ml 스크립트 경로 (SIMPAC 폴더 기준)
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        simpac_dir = os.path.join(backend_dir, '..', '..')
+        ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+        script_path = os.path.join(ai_ml_path, 'scripts', 'data_augmentation.py')
+        
+        # 절대 경로로 변환
+        script_path = os.path.abspath(script_path)
+        ai_ml_path = os.path.abspath(ai_ml_path)
+        
+        if not os.path.exists(script_path):
+            print(f"❌ 스크립트 파일 없음: {script_path}")
+            print(f"   ai_ml_path: {ai_ml_path}")
+            print(f"   존재 여부: {os.path.exists(ai_ml_path)}")
+            return jsonify({'error': f'데이터 증강 스크립트를 찾을 수 없습니다: {script_path}'}), 404
+        
+        print(f"✅ 스크립트 파일 확인: {script_path}")
+        
+        # 백그라운드에서 실행
+        def run_augmentation():
+            try:
+                print(f"🚀 데이터 증강 스크립트 실행 시작: {script_path}")
+                print(f"📁 작업 디렉토리: {ai_ml_path}")
+                
+                # Python 경로 찾기 (ai_ml venv 우선, 없으면 백엔드 venv, 마지막으로 시스템 python3)
+                python_path = 'python3'
+                ai_ml_venv = os.path.join(ai_ml_path, 'venv', 'bin', 'python3')
+                backend_venv = os.path.join(os.path.dirname(__file__), 'venv', 'bin', 'python3')
+                
+                if os.path.exists(ai_ml_venv):
+                    python_path = ai_ml_venv
+                    print(f"✅ ai_ml venv Python 사용: {python_path}")
+                elif os.path.exists(backend_venv):
+                    python_path = backend_venv
+                    print(f"✅ 백엔드 venv Python 사용: {python_path}")
+                else:
+                    print(f"⚠️ 시스템 Python 사용: {python_path}")
+                
+                # 환경 변수 설정
+                env = os.environ.copy()
+                # venv가 있으면 PATH에 추가
+                if os.path.exists(ai_ml_venv):
+                    venv_bin = os.path.dirname(ai_ml_venv)
+                    env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                elif os.path.exists(backend_venv):
+                    venv_bin = os.path.dirname(backend_venv)
+                    env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                
+                # 비동기 실행 (Popen 사용)
+                print(f"🚀 프로세스 시작: {python_path} {script_path}")
+                process = subprocess.Popen(
+                    [python_path, script_path],
+                    cwd=ai_ml_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                    bufsize=1  # 라인 버퍼링
+                )
+                
+                print(f"✅ 프로세스 시작됨 (PID: {process.pid})")
+                
+                # 비동기로 출력 읽기
+                def read_output():
+                    try:
+                        for line in process.stdout:
+                            print(f"[증강] {line.strip()}")
+                    except Exception as e:
+                        print(f"⚠️ 출력 읽기 오류: {e}")
+                
+                def read_error():
+                    try:
+                        for line in process.stderr:
+                            print(f"[증강-에러] {line.strip()}")
+                    except Exception as e:
+                        print(f"⚠️ 에러 읽기 오류: {e}")
+                
+                # 출력을 별도 스레드에서 읽기
+                import threading
+                stdout_thread = threading.Thread(target=read_output, daemon=True)
+                stderr_thread = threading.Thread(target=read_error, daemon=True)
+                stdout_thread.start()
+                stderr_thread.start()
+                
+                # 프로세스를 완전히 백그라운드로 실행 (wait() 제거)
+                # 진행률은 파일로 추적하므로 프로세스를 기다리지 않음
+                print(f"✅ 프로세스가 백그라운드에서 실행 중입니다 (PID: {process.pid})")
+                print(f"📊 진행률은 /api/ai/progress/augment로 확인하세요")
+                
+                # 프로세스 완료를 별도 스레드에서 처리 (선택사항)
+                def wait_for_completion():
+                    return_code = process.wait()
+                    if return_code != 0:
+                        print(f"❌ 데이터 증강 오류 (코드: {return_code})")
+                    else:
+                        print(f"✅ 데이터 증강 완료")
+                
+                completion_thread = threading.Thread(target=wait_for_completion, daemon=True)
+                completion_thread.start()
+                    
+            except FileNotFoundError as e:
+                print(f"❌ 파일을 찾을 수 없음: {e}")
+                print(f"   스크립트 경로: {script_path}")
+                print(f"   존재 여부: {os.path.exists(script_path)}")
+            except Exception as e:
+                print(f"❌ 데이터 증강 실행 오류: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # 별도 스레드에서 실행
+        import threading
+        thread = threading.Thread(target=run_augmentation, daemon=True)
+        thread.start()
+        
+        return jsonify({
+            'status': 'started',
+            'message': '데이터 증강이 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.',
+            'progress_file': os.path.join(ai_ml_path, 'data', 'augment_progress.json')
+        })
+        
+    except Exception as e:
+        print(f"❌ 데이터 증강 API 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/train', methods=['POST'])
+def train_model():
+    """모델 학습 실행"""
+    try:
+        import sys
+        import os
+        import subprocess
+        
+        # ai_ml 스크립트 경로 (SIMPAC 폴더 기준)
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        simpac_dir = os.path.join(backend_dir, '..', '..')
+        ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+        script_path = os.path.join(ai_ml_path, 'scripts', 'train_model.py')
+        
+        # 절대 경로로 변환
+        script_path = os.path.abspath(script_path)
+        ai_ml_path = os.path.abspath(ai_ml_path)
+        
+        if not os.path.exists(script_path):
+            return jsonify({'error': f'모델 학습 스크립트를 찾을 수 없습니다: {script_path}'}), 404
+        
+        # 이전 진행률 파일 초기화 (에러 상태 제거)
+        progress_file = os.path.join(ai_ml_path, 'data', 'train_progress.json')
+        progress_file = os.path.abspath(progress_file)
+        try:
+            import json
+            os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+            with open(progress_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'stage': 'not_started',
+                    'progress': 0,
+                    'message': '학습 시작 중...'
+                }, f)
+        except Exception as e:
+            print(f"⚠️ 진행률 파일 초기화 실패 (무시): {e}")
+        
+        # 백그라운드에서 실행
+        def run_training():
+            try:
+                print(f"🚀 모델 학습 스크립트 실행 시작: {script_path}")
+                print(f"📁 작업 디렉토리: {ai_ml_path}")
+                
+                # Python 경로 찾기 (ai_ml venv 우선, 없으면 백엔드 venv, 마지막으로 시스템 python3)
+                python_path = 'python3'
+                ai_ml_venv = os.path.join(ai_ml_path, 'venv', 'bin', 'python3')
+                backend_venv = os.path.join(os.path.dirname(__file__), 'venv', 'bin', 'python3')
+                
+                if os.path.exists(ai_ml_venv):
+                    python_path = ai_ml_venv
+                    print(f"✅ ai_ml venv Python 사용: {python_path}")
+                elif os.path.exists(backend_venv):
+                    python_path = backend_venv
+                    print(f"✅ 백엔드 venv Python 사용: {python_path}")
+                else:
+                    print(f"⚠️ 시스템 Python 사용: {python_path}")
+                
+                # 환경 변수 설정
+                env = os.environ.copy()
+                # venv가 있으면 PATH에 추가
+                if os.path.exists(ai_ml_venv):
+                    venv_bin = os.path.dirname(ai_ml_venv)
+                    env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                elif os.path.exists(backend_venv):
+                    venv_bin = os.path.dirname(backend_venv)
+                    env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                
+                
+                # ROCm 경로 설정 (있는 경우, 하지만 사용하지 않음)
+                # possible_rocm_paths = ['/opt/rocm', '/usr', '/usr/local']
+                # if 'ROCM_PATH' not in env:
+                #     for path in possible_rocm_paths:
+                #         if os.path.exists(os.path.join(path, 'lib', 'libhip_hcc.so')) or \
+                #            os.path.exists(os.path.join(path, 'lib', 'libamdhip64.so')):
+                #             env['ROCM_PATH'] = path
+                #             print(f"💡 ROCm 경로 설정: ROCM_PATH={path}")
+                #             break
+                
+                # 비동기 실행 (Popen 사용)
+                print(f"🚀 프로세스 시작: {python_path} {script_path}")
+                process = subprocess.Popen(
+                    [python_path, script_path],
+                    cwd=ai_ml_path,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                    bufsize=1
+                )
+                
+                print(f"✅ 프로세스 시작됨 (PID: {process.pid})")
+                
+                # 비동기로 출력 읽기
+                def read_output():
+                    try:
+                        for line in process.stdout:
+                            print(f"[학습] {line.strip()}")
+                    except Exception as e:
+                        print(f"⚠️ 출력 읽기 오류: {e}")
+                
+                def read_error():
+                    try:
+                        for line in process.stderr:
+                            print(f"[학습-에러] {line.strip()}")
+                    except Exception as e:
+                        print(f"⚠️ 에러 읽기 오류: {e}")
+                
+                # 출력을 별도 스레드에서 읽기
+                import threading
+                stdout_thread = threading.Thread(target=read_output, daemon=True)
+                stderr_thread = threading.Thread(target=read_error, daemon=True)
+                stdout_thread.start()
+                stderr_thread.start()
+                
+                # 프로세스를 완전히 백그라운드로 실행 (wait() 제거)
+                print(f"✅ 프로세스가 백그라운드에서 실행 중입니다 (PID: {process.pid})")
+                print(f"📊 진행률은 /api/ai/progress/train으로 확인하세요")
+                
+                # 프로세스 완료를 별도 스레드에서 처리 (선택사항)
+                def wait_for_completion():
+                    return_code = process.wait()
+                    if return_code != 0:
+                        print(f"❌ 모델 학습 오류 (코드: {return_code})")
+                    else:
+                        print(f"✅ 모델 학습 완료")
+                
+                completion_thread = threading.Thread(target=wait_for_completion, daemon=True)
+                completion_thread.start()
+                    
+            except Exception as e:
+                print(f"❌ 모델 학습 실행 오류: {e}")
+                import traceback
+                traceback.print_exc()
+        
+        # 별도 스레드에서 실행
+        import threading
+        thread = threading.Thread(target=run_training, daemon=True)
+        thread.start()
+        
+        return jsonify({
+            'status': 'started',
+            'message': '모델 학습이 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.',
+            'progress_file': os.path.join(ai_ml_path, 'data', 'train_progress.json')
+        })
+        
+    except Exception as e:
+        print(f"❌ 모델 학습 API 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/predict', methods=['GET'])
+def ai_predict():
+    """AI 예측 수행"""
+    try:
+        import sys
+        import os
+        # ai_ml 스크립트 경로 추가 (SIMPAC 폴더 기준)
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        simpac_dir = os.path.join(backend_dir, '..', '..')
+        ai_ml_path = os.path.join(simpac_dir, 'ai_ml', 'scripts')
+        ai_ml_path = os.path.abspath(ai_ml_path)
+        if os.path.exists(ai_ml_path):
+            sys.path.insert(0, ai_ml_path)
+        
+        from predict import predict_and_analyze
+        
+        result = predict_and_analyze()
+        
+        if 'error' in result:
+            return jsonify(result), 500
+        
+        return jsonify(result)
+        
+    except ImportError as e:
+        print(f"❌ 모듈 import 오류: {e}")
+        return jsonify({'error': f'AI 모듈을 찾을 수 없습니다. ai_ml 폴더를 확인하세요: {str(e)}'}), 500
+    except Exception as e:
+        print(f"❌ AI 예측 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/progress/<progress_type>', methods=['GET'])
+def get_progress(progress_type):
+    """진행률 조회 (augment 또는 train)"""
+    try:
+        import os
+        import json
+        
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        simpac_dir = os.path.join(backend_dir, '..', '..')
+        ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+        
+        if progress_type == 'augment':
+            progress_file = os.path.join(ai_ml_path, 'data', 'augment_progress.json')
+        elif progress_type == 'train':
+            progress_file = os.path.join(ai_ml_path, 'data', 'train_progress.json')
+        else:
+            return jsonify({'error': 'Invalid progress type'}), 400
+        
+        progress_file = os.path.abspath(progress_file)
+        
+        if not os.path.exists(progress_file):
+            return jsonify({
+                'progress': 0,
+                'stage': 'not_started',
+                'message': '아직 시작되지 않았습니다.'
+            })
+        
+        try:
+            with open(progress_file, 'r', encoding='utf-8') as f:
+                progress_data = json.load(f)
+            
+            # progress_data에서 필요한 필드만 안전하게 추출
+            result = {
+                'progress': progress_data.get('progress', 0),
+                'stage': progress_data.get('stage', 'unknown'),
+                'message': progress_data.get('message', '진행 중...')
+            }
+            
+            # 에러가 있으면 포함
+            if 'error' in progress_data:
+                result['error'] = progress_data['error']
+            
+            return jsonify(result)
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON 파싱 오류: {e}")
+            return jsonify({
+                'error': f'진행률 파일 파싱 오류: {str(e)}',
+                'progress': 0,
+                'stage': 'error',
+                'message': '진행률 파일을 읽을 수 없습니다.'
+            }), 500
+        except Exception as e:
+            print(f"❌ 진행률 파일 읽기 오류: {e}")
+            return jsonify({
+                'error': str(e),
+                'progress': 0,
+                'stage': 'error',
+                'message': f'오류 발생: {str(e)}'
+            }), 500
+        
+    except Exception as e:
+        print(f"❌ 진행률 조회 오류: {e}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5005)

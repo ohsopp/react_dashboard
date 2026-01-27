@@ -5,7 +5,7 @@ import PanelHeader from '../PanelHeader/PanelHeader'
 import '../Panel/Panel.css'
 import './AIPrediction.css'
 
-const AIPrediction = ({ selectedRange }) => {
+const AIPrediction = ({ selectedRange, onSelectRange }) => {
   const [augmentedTemp, setAugmentedTemp] = useState({ timestamps: [], values: [] })
   const [augmentedVib, setAugmentedVib] = useState({ timestamps: [], v_rms: [], a_peak: [], a_rms: [], crest: [], temperature: [] })
   const [prediction, setPrediction] = useState(null)
@@ -22,16 +22,42 @@ const AIPrediction = ({ selectedRange }) => {
 
   useEffect(() => {
     fetchAugmentedData()
-    fetchPrediction()
     
     // 증강 데이터는 자주 업데이트할 필요 없음 (한 번 생성되면 고정)
-    // 예측만 주기적으로 업데이트
-    const predictionInterval = setInterval(() => {
+    // 예측만 주기적으로 업데이트 (학습 중이 아닐 때만)
+    let predictionInterval = null
+    
+    // 학습 중이 아닐 때만 예측 호출 및 인터벌 설정
+    if (!training) {
       fetchPrediction()
-    }, 10000) // 10초마다 예측만 업데이트
+      predictionInterval = setInterval(() => {
+        if (!training) {
+          fetchPrediction()
+        }
+      }, 10000) // 10초마다 예측만 업데이트
+    }
 
-    return () => clearInterval(predictionInterval)
-  }, [selectedRange])
+    return () => {
+      if (predictionInterval) {
+        clearInterval(predictionInterval)
+      }
+    }
+  }, [selectedRange, training])
+
+  // 새로고침 이벤트 리스너
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchAugmentedData()
+      if (!training) {
+        fetchPrediction()
+      }
+    }
+
+    window.addEventListener('ai-refresh', handleRefresh)
+    return () => {
+      window.removeEventListener('ai-refresh', handleRefresh)
+    }
+  }, [training])
 
   // 진행률 조회
   useEffect(() => {
@@ -111,13 +137,29 @@ const AIPrediction = ({ selectedRange }) => {
             // 진행률 업데이트 (stage가 not_started가 아니면 진행률 표시)
             if (data.stage && data.stage !== 'not_started') {
               const progress = typeof data.progress === 'number' ? data.progress : 0
-              const message = data.message || '진행 중...'
+              let message = data.message || '진행 중...'
+              
+              // 예상 시간이 있으면 메시지에 추가
+              if (data.estimated_time_minutes) {
+                const minutes = Math.floor(data.estimated_time_minutes)
+                const seconds = Math.floor((data.estimated_time_minutes - minutes) * 60)
+                if (minutes > 0) {
+                  message += ` (예상 소요 시간: 약 ${minutes}분 ${seconds}초)`
+                } else {
+                  message += ` (예상 소요 시간: 약 ${seconds}초)`
+                }
+              }
+              
               setTrainProgress({ progress, message })
               
               // 완료 확인
               if (progress >= 100 || data.stage === 'complete') {
                 setTraining(false)
                 setStatusMessage({ type: 'success', text: '모델 학습이 완료되었습니다.' })
+                // 학습 완료 후 예측 다시 호출
+                setTimeout(() => {
+                  fetchPrediction()
+                }, 2000) // 2초 후 예측 호출
               }
             } else if (data.stage === 'not_started') {
               // 아직 시작되지 않았지만 training이 true면 대기
@@ -200,16 +242,46 @@ const AIPrediction = ({ selectedRange }) => {
   }
 
   const fetchPrediction = async () => {
+    // 학습 중이면 예측 호출하지 않음
+    if (training) {
+      return
+    }
+    
+    // 이미 로딩 중이면 중복 호출 방지
+    if (loading) {
+      return
+    }
+    
     setLoading(true)
     try {
       const response = await fetch('/api/ai/predict')
       if (response.ok) {
         const data = await response.json()
         setPrediction(data)
+        setError(null)
+        setLoading(false)
+      } else if (response.status === 503) {
+        // 학습 중이거나 서비스 사용 불가
+        const data = await response.json().catch(() => ({}))
+        console.log('예측 불가 (학습 중 또는 모델 없음):', data.message || data.error)
+        // 에러를 표시하지 않고 조용히 무시
+        setPrediction(null)
+        setLoading(false)
+      } else if (response.status === 404) {
+        // 모델이 없음
+        const data = await response.json().catch(() => ({}))
+        console.log('모델 없음:', data.error)
+        setPrediction(null)
+        setLoading(false)
+      } else {
+        const data = await response.json().catch(() => ({ error: '예측 실패' }))
+        console.error('예측 실패:', data.error)
+        setError(data.error || '예측을 수행할 수 없습니다')
+        setLoading(false)
       }
     } catch (error) {
       console.error('예측 데이터 가져오기 실패:', error)
-    } finally {
+      // 네트워크 오류 등은 조용히 무시 (재시도될 것임)
       setLoading(false)
     }
   }
@@ -297,6 +369,26 @@ const AIPrediction = ({ selectedRange }) => {
       setTrainProgress({ progress: 0, message: '' })
     }
     // finally에서 setTraining(false) 제거 - 진행률이 100%가 될 때까지 유지
+  }
+
+  const handleStopTrain = async () => {
+    try {
+      const response = await fetch('/api/ai/train/stop', {
+        method: 'POST'
+      })
+      const data = await response.json()
+      
+      if (response.ok) {
+        setStatusMessage({ type: 'success', text: data.message || '학습이 중지되었습니다.' })
+        setTraining(false)
+        setTrainProgress({ progress: 0, message: '학습이 중지되었습니다.' })
+      } else {
+        setStatusMessage({ type: 'error', text: data.error || '학습 중지 실패' })
+      }
+    } catch (error) {
+      setStatusMessage({ type: 'error', text: '학습 중지 중 오류가 발생했습니다.' })
+      console.error('학습 중지 실패:', error)
+    }
   }
 
   // SortableJS 초기화 (센서 탭과 동일한 방식)
@@ -472,7 +564,7 @@ const AIPrediction = ({ selectedRange }) => {
               onClick={handleAugment}
               disabled={augmenting}
             >
-              {augmenting ? '증강 중...' : '데이터 증강 실행'}
+              데이터 증강
             </button>
             {augmenting && (
               <div className="progress-container">
@@ -495,20 +587,28 @@ const AIPrediction = ({ selectedRange }) => {
               onClick={handleTrain}
               disabled={training}
             >
-              {training ? '학습 중...' : '모델 학습 실행'}
+              모델 학습
             </button>
             {training && (
-              <div className="progress-container">
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill train-fill" 
-                    style={{ width: `${trainProgress.progress}%` }}
-                  ></div>
+              <>
+                <button 
+                  className="action-btn stop-btn" 
+                  onClick={handleStopTrain}
+                >
+                  중지
+                </button>
+                <div className="progress-container">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-fill train-fill" 
+                      style={{ width: `${trainProgress.progress}%` }}
+                    ></div>
+                  </div>
+                  <div className="progress-text">
+                    {trainProgress.progress}% - {trainProgress.message || '진행 중...'}
+                  </div>
                 </div>
-                <div className="progress-text">
-                  {trainProgress.progress}% - {trainProgress.message || '진행 중...'}
-                </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -635,7 +735,7 @@ const AIPrediction = ({ selectedRange }) => {
           })}
         </div>
 
-        {loading && <div className="loading">예측 중...</div>}
+        {loading && !prediction && <div className="loading">예측 중...</div>}
 
         {/* 데이터가 없을 때 안내 메시지 */}
         {!error && !loading && !prediction && augmentedTemp.timestamps.length === 0 && augmentedVib.timestamps.length === 0 && (

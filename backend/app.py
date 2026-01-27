@@ -1457,29 +1457,79 @@ def run_data_augmentation():
                 ai_ml_venv = os.path.join(ai_ml_path, 'venv', 'bin', 'python3')
                 backend_venv = os.path.join(os.path.dirname(__file__), 'venv', 'bin', 'python3')
                 
+                # 절대 경로로 변환
+                ai_ml_venv = os.path.abspath(ai_ml_venv)
+                backend_venv = os.path.abspath(backend_venv)
+                
                 if os.path.exists(ai_ml_venv):
                     python_path = ai_ml_venv
                     print(f"✅ ai_ml venv Python 사용: {python_path}")
+                    # venv 존재 확인
+                    if not os.path.exists(python_path):
+                        print(f"❌ Python 경로가 존재하지 않습니다: {python_path}")
+                        raise FileNotFoundError(f"Python 경로를 찾을 수 없습니다: {python_path}")
                 elif os.path.exists(backend_venv):
                     python_path = backend_venv
                     print(f"✅ 백엔드 venv Python 사용: {python_path}")
                 else:
                     print(f"⚠️ 시스템 Python 사용: {python_path}")
+                    # 시스템 Python도 절대 경로로 변환 시도
+                    import shutil
+                    system_python = shutil.which('python3')
+                    if system_python:
+                        python_path = system_python
+                        print(f"   시스템 Python 경로: {python_path}")
                 
                 # 환경 변수 설정
                 env = os.environ.copy()
-                # venv가 있으면 PATH에 추가
+                # venv가 있으면 PATH에 추가하고 PYTHONPATH 설정
                 if os.path.exists(ai_ml_venv):
                     venv_bin = os.path.dirname(ai_ml_venv)
+                    venv_lib = os.path.join(os.path.dirname(venv_bin), 'lib')
+                    # Python 버전에 맞는 site-packages 경로 찾기
+                    python_version = f"python{os.sys.version_info.major}.{os.sys.version_info.minor}"
+                    site_packages = os.path.join(venv_lib, python_version, 'site-packages')
                     env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                    if os.path.exists(site_packages):
+                        env['PYTHONPATH'] = f"{site_packages}:{env.get('PYTHONPATH', '')}"
+                    print(f"✅ 환경 변수 설정: PATH={venv_bin}, PYTHONPATH={site_packages if os.path.exists(site_packages) else 'N/A'}")
                 elif os.path.exists(backend_venv):
                     venv_bin = os.path.dirname(backend_venv)
                     env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
                 
+                # Python 경로 확인 및 테스트
+                try:
+                    import subprocess as sp
+                    # 실제 사용할 Python 경로로 테스트
+                    test_cmd = [python_path, '-c', 'import sys; print(sys.executable); import numpy; print("numpy OK")']
+                    test_result = sp.run(test_cmd, 
+                                       capture_output=True, text=True, timeout=10, env=env, cwd=ai_ml_path)
+                    print(f"🔍 Python 테스트 결과:")
+                    print(f"   명령: {' '.join(test_cmd)}")
+                    print(f"   반환 코드: {test_result.returncode}")
+                    print(f"   stdout: {test_result.stdout}")
+                    if test_result.returncode != 0:
+                        print(f"   ⚠️ stderr: {test_result.stderr}")
+                    else:
+                        print(f"✅ Python 경로 테스트 성공: {python_path}")
+                except Exception as e:
+                    print(f"⚠️ Python 경로 테스트 중 오류: {e}")
+                    import traceback
+                    traceback.print_exc()
+                
                 # 비동기 실행 (Popen 사용)
                 print(f"🚀 프로세스 시작: {python_path} {script_path}")
+                print(f"📁 작업 디렉토리: {ai_ml_path}")
+                print(f"🔧 환경 변수:")
+                print(f"   PATH: {env.get('PATH', 'N/A')[:100]}...")
+                print(f"   PYTHONPATH: {env.get('PYTHONPATH', 'N/A')}")
+                
+                # 절대 경로로 변환
+                python_path_abs = os.path.abspath(python_path) if not os.path.isabs(python_path) else python_path
+                script_path_abs = os.path.abspath(script_path)
+                
                 process = subprocess.Popen(
-                    [python_path, script_path],
+                    [python_path_abs, script_path_abs],
                     cwd=ai_ml_path,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
@@ -1489,21 +1539,37 @@ def run_data_augmentation():
                 )
                 
                 print(f"✅ 프로세스 시작됨 (PID: {process.pid})")
+                print(f"   Python: {python_path_abs}")
+                print(f"   Script: {script_path_abs}")
                 
                 # 비동기로 출력 읽기
                 def read_output():
                     try:
                         for line in process.stdout:
-                            print(f"[증강] {line.strip()}")
+                            line_str = line.strip()
+                            if line_str:
+                                print(f"[증강] {line_str}")
                     except Exception as e:
                         print(f"⚠️ 출력 읽기 오류: {e}")
+                        import traceback
+                        traceback.print_exc()
                 
                 def read_error():
                     try:
+                        error_lines = []
                         for line in process.stderr:
-                            print(f"[증강-에러] {line.strip()}")
+                            line_str = line.strip()
+                            if line_str:
+                                error_lines.append(line_str)
+                                print(f"[증강-에러] {line_str}")
+                        
+                        # 프로세스 종료 후 에러가 있으면 상세 출력
+                        if error_lines:
+                            print(f"❌ 총 {len(error_lines)}개의 에러 라인 발견")
                     except Exception as e:
                         print(f"⚠️ 에러 읽기 오류: {e}")
+                        import traceback
+                        traceback.print_exc()
                 
                 # 출력을 별도 스레드에서 읽기
                 import threading
@@ -1575,6 +1641,29 @@ def train_model():
         if not os.path.exists(script_path):
             return jsonify({'error': f'모델 학습 스크립트를 찾을 수 없습니다: {script_path}'}), 404
         
+        # 기존 학습 프로세스 종료
+        try:
+            import psutil
+            killed_count = 0
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'train_model.py' in ' '.join(cmdline):
+                        print(f"🛑 기존 학습 프로세스 종료: PID {proc.info['pid']}")
+                        proc.terminate()
+                        killed_count += 1
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            
+            if killed_count > 0:
+                print(f"✅ {killed_count}개의 기존 학습 프로세스 종료됨")
+                import time
+                time.sleep(2)  # 프로세스 종료 대기
+        except ImportError:
+            print("⚠️ psutil이 없어 기존 프로세스를 확인할 수 없습니다.")
+        except Exception as e:
+            print(f"⚠️ 기존 프로세스 종료 중 오류 (무시): {e}")
+        
         # 이전 진행률 파일 초기화 (에러 상태 제거)
         progress_file = os.path.join(ai_ml_path, 'data', 'train_progress.json')
         progress_file = os.path.abspath(progress_file)
@@ -1612,24 +1701,40 @@ def train_model():
                 
                 # 환경 변수 설정
                 env = os.environ.copy()
-                # venv가 있으면 PATH에 추가
+                # venv가 있으면 PATH에 추가하고 PYTHONPATH 설정
                 if os.path.exists(ai_ml_venv):
                     venv_bin = os.path.dirname(ai_ml_venv)
+                    venv_lib = os.path.join(os.path.dirname(venv_bin), 'lib')
+                    # Python 버전에 맞는 site-packages 경로 찾기
+                    python_version = f"python{os.sys.version_info.major}.{os.sys.version_info.minor}"
+                    site_packages = os.path.join(venv_lib, python_version, 'site-packages')
                     env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
+                    if os.path.exists(site_packages):
+                        env['PYTHONPATH'] = f"{site_packages}:{env.get('PYTHONPATH', '')}"
+                    print(f"✅ 환경 변수 설정: PATH={venv_bin}, PYTHONPATH={site_packages if os.path.exists(site_packages) else 'N/A'}")
                 elif os.path.exists(backend_venv):
                     venv_bin = os.path.dirname(backend_venv)
                     env['PATH'] = f"{venv_bin}:{env.get('PATH', '')}"
                 
-                
-                # ROCm 경로 설정 (있는 경우, 하지만 사용하지 않음)
-                # possible_rocm_paths = ['/opt/rocm', '/usr', '/usr/local']
-                # if 'ROCM_PATH' not in env:
-                #     for path in possible_rocm_paths:
-                #         if os.path.exists(os.path.join(path, 'lib', 'libhip_hcc.so')) or \
-                #            os.path.exists(os.path.join(path, 'lib', 'libamdhip64.so')):
-                #             env['ROCM_PATH'] = path
-                #             print(f"💡 ROCm 경로 설정: ROCM_PATH={path}")
-                #             break
+                # Python 경로 확인 및 테스트
+                try:
+                    import subprocess as sp
+                    # 실제 사용할 Python 경로로 테스트
+                    test_cmd = [python_path, '-c', 'import sys; print(sys.executable); import numpy; import torch; print("numpy, torch OK")']
+                    test_result = sp.run(test_cmd, 
+                                       capture_output=True, text=True, timeout=10, env=env, cwd=ai_ml_path)
+                    print(f"🔍 Python 테스트 결과:")
+                    print(f"   명령: {' '.join(test_cmd)}")
+                    print(f"   반환 코드: {test_result.returncode}")
+                    print(f"   stdout: {test_result.stdout}")
+                    if test_result.returncode != 0:
+                        print(f"   ⚠️ stderr: {test_result.stderr}")
+                    else:
+                        print(f"✅ Python 경로 테스트 성공: {python_path}")
+                except Exception as e:
+                    print(f"⚠️ Python 경로 테스트 중 오류: {e}")
+                    import traceback
+                    traceback.print_exc()
                 
                 # 비동기 실행 (Popen 사용)
                 print(f"🚀 프로세스 시작: {python_path} {script_path}")
@@ -1704,28 +1809,271 @@ def train_model():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ai/train/stop', methods=['POST'])
+def stop_training():
+    """학습 프로세스 종료"""
+    try:
+        import os
+        import subprocess
+        import time
+        import json
+        
+        killed_count = 0
+        killed_pids = []
+        
+        # psutil 사용 시도, 없으면 시스템 명령어 사용
+        try:
+            import psutil
+            use_psutil = True
+        except ImportError:
+            use_psutil = False
+            print("⚠️ psutil이 없어 시스템 명령어를 사용합니다.")
+        
+        if use_psutil:
+            # psutil 사용
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'train_model.py' in ' '.join(cmdline):
+                        pid = proc.info['pid']
+                        print(f"🛑 학습 프로세스 종료: PID {pid}")
+                        proc.terminate()
+                        killed_count += 1
+                        killed_pids.append(pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    pass
+        else:
+            # 시스템 명령어 사용 (Linux)
+            try:
+                # pgrep으로 train_model.py를 실행하는 프로세스 찾기
+                result = subprocess.run(
+                    ['pgrep', '-f', 'train_model.py'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                
+                if result.returncode == 0:
+                    pids = result.stdout.strip().split('\n')
+                    for pid_str in pids:
+                        if pid_str.strip():
+                            try:
+                                pid = int(pid_str.strip())
+                                print(f"🛑 학습 프로세스 발견: PID {pid}")
+                                killed_pids.append(pid)
+                                killed_count += 1
+                            except ValueError:
+                                pass
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
+                print(f"⚠️ 프로세스 검색 실패: {e}")
+                # ps 명령어로 시도
+                try:
+                    result = subprocess.run(
+                        ['ps', 'aux'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        for line in result.stdout.split('\n'):
+                            if 'train_model.py' in line:
+                                parts = line.split()
+                                if len(parts) > 1:
+                                    try:
+                                        pid = int(parts[1])
+                                        print(f"🛑 학습 프로세스 발견: PID {pid}")
+                                        killed_pids.append(pid)
+                                        killed_count += 1
+                                    except (ValueError, IndexError):
+                                        pass
+                except Exception as e2:
+                    print(f"⚠️ ps 명령어도 실패: {e2}")
+        
+        if killed_count > 0:
+            # 프로세스 종료
+            for pid in killed_pids:
+                try:
+                    if use_psutil:
+                        proc = psutil.Process(pid)
+                        proc.terminate()
+                    else:
+                        # SIGTERM 신호 전송
+                        subprocess.run(['kill', '-TERM', str(pid)], timeout=2)
+                except Exception as e:
+                    print(f"⚠️ 프로세스 {pid} 종료 실패: {e}")
+            
+            # 프로세스 종료 대기
+            time.sleep(1)
+            
+            # 강제 종료가 필요한 프로세스 확인
+            for pid in killed_pids:
+                try:
+                    if use_psutil:
+                        proc = psutil.Process(pid)
+                        if proc.is_running():
+                            print(f"⚠️ 프로세스 {pid}가 종료되지 않아 강제 종료합니다.")
+                            proc.kill()
+                    else:
+                        # 프로세스가 여전히 실행 중인지 확인하고 강제 종료
+                        try:
+                            subprocess.run(['kill', '-0', str(pid)], timeout=1, check=True)
+                            # 프로세스가 살아있으면 강제 종료
+                            print(f"⚠️ 프로세스 {pid}가 종료되지 않아 강제 종료합니다.")
+                            subprocess.run(['kill', '-KILL', str(pid)], timeout=2)
+                        except subprocess.CalledProcessError:
+                            # 프로세스가 이미 종료됨
+                            pass
+                except Exception as e:
+                    print(f"⚠️ 프로세스 {pid} 강제 종료 실패: {e}")
+            
+            # 진행률 파일 초기화
+            backend_dir = os.path.dirname(os.path.abspath(__file__))
+            simpac_dir = os.path.join(backend_dir, '..', '..')
+            ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+            progress_file = os.path.join(ai_ml_path, 'data', 'train_progress.json')
+            progress_file = os.path.abspath(progress_file)
+            try:
+                os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        'stage': 'stopped',
+                        'progress': 0,
+                        'message': '학습이 중지되었습니다.'
+                    }, f)
+            except Exception as e:
+                print(f"⚠️ 진행률 파일 초기화 실패 (무시): {e}")
+            
+            print(f"✅ {killed_count}개의 학습 프로세스 종료됨")
+            return jsonify({
+                'status': 'stopped',
+                'message': f'{killed_count}개의 학습 프로세스가 종료되었습니다.',
+                'killed_count': killed_count
+            })
+        else:
+            return jsonify({
+                'status': 'not_found',
+                'message': '실행 중인 학습 프로세스가 없습니다.'
+            })
+            
+    except Exception as e:
+        print(f"❌ 학습 프로세스 종료 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/ai/predict', methods=['GET'])
 def ai_predict():
     """AI 예측 수행"""
     try:
         import sys
         import os
-        # ai_ml 스크립트 경로 추가 (SIMPAC 폴더 기준)
+        import json
+        
+        # 학습 중인지 확인
         backend_dir = os.path.dirname(os.path.abspath(__file__))
         simpac_dir = os.path.join(backend_dir, '..', '..')
-        ai_ml_path = os.path.join(simpac_dir, 'ai_ml', 'scripts')
-        ai_ml_path = os.path.abspath(ai_ml_path)
-        if os.path.exists(ai_ml_path):
-            sys.path.insert(0, ai_ml_path)
+        ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+        progress_file = os.path.join(ai_ml_path, 'data', 'train_progress.json')
         
-        from predict import predict_and_analyze
+        if os.path.exists(progress_file):
+            try:
+                with open(progress_file, 'r', encoding='utf-8') as f:
+                    progress_data = json.load(f)
+                    stage = progress_data.get('stage', '')
+                    # 학습 중이면 예측 불가
+                    if stage in ['training', 'loading', 'preparing', 'saving']:
+                        return jsonify({
+                            'error': '모델 학습이 진행 중입니다. 학습이 완료된 후 다시 시도해주세요.',
+                            'stage': stage,
+                            'progress': progress_data.get('progress', 0),
+                            'message': progress_data.get('message', '')
+                        }), 503  # Service Unavailable
+            except Exception as e:
+                print(f"⚠️ 진행률 파일 읽기 오류 (무시): {e}")
         
-        result = predict_and_analyze()
+        # 모델 파일 존재 확인 (PyTorch만 사용)
+        model_dir = os.path.join(ai_ml_path, 'models')
+        model_path = os.path.join(model_dir, 'model.pth')  # PyTorch 모델
         
-        if 'error' in result:
-            return jsonify(result), 500
+        if not os.path.exists(model_path):
+            return jsonify({
+                'error': '학습된 모델이 없습니다. 먼저 모델 학습을 완료해주세요.'
+            }), 404
         
-        return jsonify(result)
+        # predict 스크립트를 subprocess로 실행 (ai_ml venv 사용)
+        predict_script_path = os.path.join(ai_ml_path, 'scripts', 'predict.py')
+        predict_script_path = os.path.abspath(predict_script_path)
+        
+        if not os.path.exists(predict_script_path):
+            return jsonify({'error': f'예측 스크립트를 찾을 수 없습니다: {predict_script_path}'}), 404
+        
+        # Python 경로 찾기 (ai_ml venv 우선)
+        python_path = 'python3'
+        ai_ml_venv = os.path.join(ai_ml_path, 'venv', 'bin', 'python3')
+        ai_ml_venv = os.path.abspath(ai_ml_venv)
+        
+        if os.path.exists(ai_ml_venv):
+            python_path = ai_ml_venv
+            print(f"✅ 예측 스크립트 실행: {python_path} {predict_script_path}")
+        else:
+            print(f"⚠️ ai_ml venv를 찾을 수 없습니다. 시스템 Python 사용: {python_path}")
+        
+        # subprocess로 실행
+        import subprocess
+        try:
+            result = subprocess.run(
+                [python_path, predict_script_path],
+                cwd=ai_ml_path,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            # stderr에 경고 메시지가 있을 수 있음 (무시)
+            if result.stderr:
+                print(f"📋 예측 스크립트 stderr: {result.stderr[:500]}")
+            
+            if result.returncode != 0:
+                error_msg = result.stderr or result.stdout
+                print(f"❌ 예측 스크립트 실행 오류 (코드: {result.returncode}): {error_msg}")
+                return jsonify({'error': f'예측 실행 실패: {error_msg[:200]}'}), 500
+            
+            # JSON 결과 파싱 (stdout의 마지막 라인만 확인 - JSON만 출력되도록)
+            import json
+            stdout_lines = result.stdout.strip().split('\n')
+            # 마지막 라인이 JSON인지 확인
+            json_line = stdout_lines[-1] if stdout_lines else ''
+            
+            try:
+                result_data = json.loads(json_line)
+                if 'error' in result_data:
+                    return jsonify(result_data), 500
+                return jsonify(result_data)
+            except json.JSONDecodeError:
+                # JSON 파싱 실패 시 전체 stdout 확인
+                print(f"⚠️ JSON 파싱 실패. stdout 전체:")
+                print(f"   {result.stdout[:500]}")
+                # stdout에서 JSON 부분 찾기
+                for line in reversed(stdout_lines):
+                    line = line.strip()
+                    if line.startswith('{') and line.endswith('}'):
+                        try:
+                            result_data = json.loads(line)
+                            if 'error' in result_data:
+                                return jsonify(result_data), 500
+                            return jsonify(result_data)
+                        except json.JSONDecodeError:
+                            continue
+                
+                return jsonify({'error': f'예측 결과 파싱 실패. stdout: {result.stdout[:200]}'}), 500
+                
+        except subprocess.TimeoutExpired:
+            return jsonify({'error': '예측 실행 시간 초과'}), 500
+        except Exception as e:
+            print(f"❌ 예측 실행 중 오류: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
         
     except ImportError as e:
         print(f"❌ 모듈 import 오류: {e}")
@@ -1773,6 +2121,12 @@ def get_progress(progress_type):
                 'stage': progress_data.get('stage', 'unknown'),
                 'message': progress_data.get('message', '진행 중...')
             }
+            
+            # 예상 시간이 있으면 포함
+            if 'estimated_time_seconds' in progress_data:
+                result['estimated_time_seconds'] = progress_data['estimated_time_seconds']
+                result['estimated_time_minutes'] = progress_data.get('estimated_time_minutes', 
+                                                                     progress_data['estimated_time_seconds'] / 60)
             
             # 에러가 있으면 포함
             if 'error' in progress_data:

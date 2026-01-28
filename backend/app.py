@@ -1420,9 +1420,367 @@ def get_augmented_vibration():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/ai/augment', methods=['POST'])
-def run_data_augmentation():
-    """데이터 증강 실행"""
+@app.route('/api/ai/original/temperature', methods=['GET'])
+def get_original_temperature():
+    """원본 온도 데이터 조회"""
+    try:
+        if influx_client is None:
+            return jsonify({'error': 'InfluxDB not connected'}), 500
+        
+        range_param = request.args.get('range', '1h')
+        query_api = influx_client.query_api()
+        
+        now = datetime.utcnow()
+        if range_param == '1h':
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        elif range_param == '6h':
+            start_time = now - timedelta(hours=6)
+            window_interval = '1m'
+        elif range_param == '24h':
+            start_time = now - timedelta(hours=24)
+            window_interval = '5m'
+        elif range_param == '7d':
+            start_time = now - timedelta(days=7)
+            window_interval = '30m'
+        else:
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        
+        start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        query = f'''
+        from(bucket: "{INFLUXDB_BUCKET}")
+          |> range(start: {start_time_str})
+          |> filter(fn: (r) => r["_measurement"] == "temperature")
+          |> filter(fn: (r) => r["_field"] == "value")
+          |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
+          |> yield(name: "mean")
+        '''
+        
+        result = query_api.query(org=INFLUXDB_ORG, query=query)
+        
+        timestamps = []
+        values = []
+        
+        for table in result:
+            for record in table.records:
+                timestamp = record.get_time().timestamp() * 1000
+                value = record.get_value()
+                timestamps.append(timestamp)
+                values.append(value if value is not None else None)
+        
+        if timestamps and values:
+            sorted_data = sorted(zip(timestamps, values))
+            timestamps, values = zip(*sorted_data)
+            timestamps = list(timestamps)
+            values = list(values)
+        
+        return jsonify({
+            'timestamps': timestamps,
+            'values': values,
+            'count': len(values)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error querying original temperature: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/ai/original/vibration', methods=['GET'])
+def get_original_vibration():
+    """원본 진동 데이터 조회"""
+    try:
+        if influx_client is None:
+            return jsonify({'error': 'InfluxDB not connected'}), 500
+        
+        range_param = request.args.get('range', '1h')
+        query_api = influx_client.query_api()
+        
+        now = datetime.utcnow()
+        if range_param == '1h':
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        elif range_param == '6h':
+            start_time = now - timedelta(hours=6)
+            window_interval = '1m'
+        elif range_param == '24h':
+            start_time = now - timedelta(hours=24)
+            window_interval = '5m'
+        elif range_param == '7d':
+            start_time = now - timedelta(days=7)
+            window_interval = '30m'
+        else:
+            start_time = now - timedelta(hours=1)
+            window_interval = '10s'
+        
+        start_time_str = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        query = f'''
+        from(bucket: "{VIBRATION_INFLUXDB_BUCKET}")
+          |> range(start: {start_time_str})
+          |> filter(fn: (r) => r["_measurement"] == "vibration")
+          |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest" or r["_field"] == "temperature")
+          |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
+          |> yield(name: "mean")
+        '''
+        
+        try:
+            result = query_api.query(org=INFLUXDB_ORG, query=query)
+        except Exception as bucket_error:
+            # vibration_data 버킷이 없으면 temperature_data 버킷에서 조회
+            print(f"⚠️ Failed to query {VIBRATION_INFLUXDB_BUCKET} bucket: {bucket_error}")
+            print(f"⚠️ Trying to query {INFLUXDB_BUCKET} bucket as fallback...")
+            try:
+                query = f'''
+                from(bucket: "{INFLUXDB_BUCKET}")
+                  |> range(start: {start_time_str})
+                  |> filter(fn: (r) => r["_measurement"] == "vibration")
+                  |> filter(fn: (r) => r["_field"] == "v_rms" or r["_field"] == "a_peak" or r["_field"] == "a_rms" or r["_field"] == "crest" or r["_field"] == "temperature")
+                  |> aggregateWindow(every: {window_interval}, fn: mean, createEmpty: true)
+                  |> yield(name: "mean")
+                '''
+                result = query_api.query(org=INFLUXDB_ORG, query=query)
+            except Exception as fallback_error:
+                print(f"❌ Failed to query fallback bucket: {fallback_error}")
+                # 빈 데이터 반환
+                return jsonify({
+                    'timestamps': [],
+                    'v_rms': [],
+                    'a_peak': [],
+                    'a_rms': [],
+                    'crest': [],
+                    'temperature': []
+                })
+        
+        timestamps = []
+        v_rms_values = []
+        a_peak_values = []
+        a_rms_values = []
+        crest_values = []
+        temperature_values = []
+        
+        for table in result:
+            for record in table.records:
+                timestamp_ms = int(record.get_time().timestamp() * 1000)
+                field = record.get_field()
+                value = record.get_value()
+                
+                if timestamp_ms not in timestamps:
+                    timestamps.append(timestamp_ms)
+                    v_rms_values.append(None)
+                    a_peak_values.append(None)
+                    a_rms_values.append(None)
+                    crest_values.append(None)
+                    temperature_values.append(None)
+                
+                idx = timestamps.index(timestamp_ms)
+                
+                if field == 'v_rms':
+                    v_rms_values[idx] = value
+                elif field == 'a_peak':
+                    a_peak_values[idx] = value
+                elif field == 'a_rms':
+                    a_rms_values[idx] = value
+                elif field == 'crest':
+                    crest_values[idx] = value
+                elif field == 'temperature':
+                    temperature_values[idx] = value
+        
+        sorted_data = sorted(zip(timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values))
+        if sorted_data:
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = zip(*sorted_data)
+        else:
+            timestamps, v_rms_values, a_peak_values, a_rms_values, crest_values, temperature_values = [], [], [], [], [], []
+        
+        return jsonify({
+            'timestamps': list(timestamps),
+            'v_rms': list(v_rms_values),
+            'a_peak': list(a_peak_values),
+            'a_rms': list(a_rms_values),
+            'crest': list(crest_values),
+            'temperature': list(temperature_values)
+        })
+    except Exception as e:
+        print(f"❌ Error querying original vibration: {e}")
+        import traceback
+        traceback.print_exc()
+        # 에러가 발생해도 빈 데이터 반환 (500 에러 대신)
+        return jsonify({
+            'timestamps': [],
+            'v_rms': [],
+            'a_peak': [],
+            'a_rms': [],
+            'crest': [],
+            'temperature': [],
+            'error': str(e)
+        })
+
+@app.route('/api/ai/augment/temperature', methods=['POST'])
+def run_temperature_augmentation():
+    """온도 데이터 증강 실행"""
+    return run_data_augmentation('temperature')
+
+@app.route('/api/ai/augment/vibration', methods=['POST'])
+def run_vibration_augmentation():
+    """진동 데이터 증강 실행"""
+    return run_data_augmentation('vibration')
+
+@app.route('/api/ai/augment/stop', methods=['POST'])
+def stop_augmentation():
+    """증강 프로세스 종료"""
+    try:
+        import os
+        import subprocess
+        import time
+        import json
+        
+        killed_count = 0
+        killed_pids = []
+        
+        # psutil 사용 시도, 없으면 시스템 명령어 사용
+        try:
+            import psutil
+            use_psutil = True
+        except ImportError:
+            use_psutil = False
+            print("⚠️ psutil이 없어 시스템 명령어를 사용합니다.")
+        
+        if use_psutil:
+            # psutil 사용
+            for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+                try:
+                    cmdline = proc.info.get('cmdline', [])
+                    if cmdline and 'data_augmentation.py' in ' '.join(cmdline):
+                        pid = proc.info['pid']
+                        print(f"🛑 증강 프로세스 종료: PID {pid}")
+                        proc.terminate()
+                        killed_count += 1
+                        killed_pids.append(pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                    pass
+        else:
+            # 시스템 명령어 사용 (Linux)
+            try:
+                # pgrep으로 data_augmentation.py를 실행하는 프로세스 찾기
+                result = subprocess.run(
+                    ['pgrep', '-f', 'data_augmentation.py'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                
+                if result.returncode == 0:
+                    pids = result.stdout.strip().split('\n')
+                    for pid_str in pids:
+                        if pid_str.strip():
+                            try:
+                                pid = int(pid_str.strip())
+                                print(f"🛑 증강 프로세스 발견: PID {pid}")
+                                killed_pids.append(pid)
+                                killed_count += 1
+                            except ValueError:
+                                pass
+            except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError) as e:
+                print(f"⚠️ 프로세스 검색 실패: {e}")
+                # ps 명령어로 시도
+                try:
+                    result = subprocess.run(
+                        ['ps', 'aux'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    if result.returncode == 0:
+                        for line in result.stdout.split('\n'):
+                            if 'data_augmentation.py' in line:
+                                parts = line.split()
+                                if len(parts) > 1:
+                                    try:
+                                        pid = int(parts[1])
+                                        print(f"🛑 증강 프로세스 발견: PID {pid}")
+                                        killed_pids.append(pid)
+                                        killed_count += 1
+                                    except (ValueError, IndexError):
+                                        pass
+                except Exception as e2:
+                    print(f"⚠️ ps 명령어도 실패: {e2}")
+        
+        if killed_count > 0:
+            # 프로세스 종료
+            for pid in killed_pids:
+                try:
+                    if use_psutil:
+                        proc = psutil.Process(pid)
+                        proc.terminate()
+                    else:
+                        # SIGTERM 신호 전송
+                        subprocess.run(['kill', '-TERM', str(pid)], timeout=2)
+                except Exception as e:
+                    print(f"⚠️ 프로세스 {pid} 종료 실패: {e}")
+            
+            # 프로세스 종료 대기
+            time.sleep(1)
+            
+            # 강제 종료가 필요한 프로세스 확인
+            for pid in killed_pids:
+                try:
+                    if use_psutil:
+                        proc = psutil.Process(pid)
+                        if proc.is_running():
+                            print(f"⚠️ 프로세스 {pid}가 종료되지 않아 강제 종료합니다.")
+                            proc.kill()
+                    else:
+                        # 프로세스가 여전히 실행 중인지 확인하고 강제 종료
+                        try:
+                            subprocess.run(['kill', '-0', str(pid)], timeout=1, check=True)
+                            # 프로세스가 살아있으면 강제 종료
+                            print(f"⚠️ 프로세스 {pid}가 종료되지 않아 강제 종료합니다.")
+                            subprocess.run(['kill', '-KILL', str(pid)], timeout=2)
+                        except subprocess.CalledProcessError:
+                            # 프로세스가 이미 종료됨
+                            pass
+                except Exception as e:
+                    print(f"⚠️ 프로세스 {pid} 강제 종료 실패: {e}")
+            
+            # 진행률 파일 초기화
+            backend_dir = os.path.dirname(os.path.abspath(__file__))
+            simpac_dir = os.path.join(backend_dir, '..', '..')
+            ai_ml_path = os.path.join(simpac_dir, 'ai_ml')
+            progress_file = os.path.join(ai_ml_path, 'data', 'augment_progress.json')
+            progress_file = os.path.abspath(progress_file)
+            try:
+                os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+                with open(progress_file, 'w', encoding='utf-8') as f:
+                    json.dump({
+                        'stage': 'stopped',
+                        'progress': 0,
+                        'message': '증강이 중지되었습니다.'
+                    }, f)
+            except Exception as e:
+                print(f"⚠️ 진행률 파일 초기화 실패 (무시): {e}")
+            
+            print(f"✅ {killed_count}개의 증강 프로세스 종료됨")
+            return jsonify({
+                'status': 'stopped',
+                'message': f'{killed_count}개의 증강 프로세스가 종료되었습니다.',
+                'killed_count': killed_count
+            })
+        else:
+            return jsonify({
+                'status': 'not_found',
+                'message': '실행 중인 증강 프로세스가 없습니다.'
+            })
+            
+    except Exception as e:
+        print(f"❌ 증강 프로세스 종료 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+def run_data_augmentation(data_type='both'):
+    """데이터 증강 실행 (온도/진동 각각 또는 둘 다)"""
     try:
         import sys
         import os
@@ -1528,6 +1886,9 @@ def run_data_augmentation():
                 python_path_abs = os.path.abspath(python_path) if not os.path.isabs(python_path) else python_path
                 script_path_abs = os.path.abspath(script_path)
                 
+                # 데이터 타입을 환경 변수로 전달
+                env['AUGMENT_TYPE'] = data_type
+                
                 process = subprocess.Popen(
                     [python_path_abs, script_path_abs],
                     cwd=ai_ml_path,
@@ -1608,9 +1969,11 @@ def run_data_augmentation():
         thread = threading.Thread(target=run_augmentation, daemon=True)
         thread.start()
         
+        data_type_name = {'temperature': '온도', 'vibration': '진동', 'both': '온도 및 진동'}.get(data_type, '데이터')
         return jsonify({
             'status': 'started',
-            'message': '데이터 증강이 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.',
+            'message': f'{data_type_name} 데이터 증강이 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.',
+            'data_type': data_type,
             'progress_file': os.path.join(ai_ml_path, 'data', 'augment_progress.json')
         })
         
@@ -1627,6 +1990,22 @@ def train_model():
         import sys
         import os
         import subprocess
+        
+        # 요청에서 모델 타입 및 데이터 소스 가져오기 (기본값: lstm, 증강 데이터)
+        model_type = 'lstm'
+        use_original_temp = False
+        use_original_vib = False
+        
+        if request.is_json:
+            data = request.get_json()
+            model_type = data.get('model_type', 'lstm')
+            use_original_temp = data.get('use_original_temp', False)
+            use_original_vib = data.get('use_original_vib', False)
+        
+        # 유효한 모델 타입 확인
+        valid_models = ['lstm', 'gru', 'transformer']
+        if model_type not in valid_models:
+            return jsonify({'error': f'유효하지 않은 모델 타입입니다. 가능한 값: {", ".join(valid_models)}'}), 400
         
         # ai_ml 스크립트 경로 (SIMPAC 폴더 기준)
         backend_dir = os.path.dirname(os.path.abspath(__file__))
@@ -1701,6 +2080,12 @@ def train_model():
                 
                 # 환경 변수 설정
                 env = os.environ.copy()
+                # 모델 타입 및 데이터 소스를 환경 변수로 전달
+                env['MODEL_TYPE'] = model_type
+                env['USE_ORIGINAL_TEMP'] = '1' if use_original_temp else '0'
+                env['USE_ORIGINAL_VIB'] = '1' if use_original_vib else '0'
+                print(f"📌 모델 타입: {model_type}")
+                print(f"📌 데이터 소스 - 온도: {'원본' if use_original_temp else '증강'}, 진동: {'원본' if use_original_vib else '증강'}")
                 # venv가 있으면 PATH에 추가하고 PYTHONPATH 설정
                 if os.path.exists(ai_ml_venv):
                     venv_bin = os.path.dirname(ai_ml_venv)
@@ -1737,7 +2122,7 @@ def train_model():
                     traceback.print_exc()
                 
                 # 비동기 실행 (Popen 사용)
-                print(f"🚀 프로세스 시작: {python_path} {script_path}")
+                print(f"🚀 프로세스 시작: {python_path} {script_path} (모델 타입: {model_type})")
                 process = subprocess.Popen(
                     [python_path, script_path],
                     cwd=ai_ml_path,
@@ -1797,9 +2182,22 @@ def train_model():
         thread = threading.Thread(target=run_training, daemon=True)
         thread.start()
         
+        data_source_info = []
+        if use_original_temp:
+            data_source_info.append('원본 온도')
+        else:
+            data_source_info.append('증강 온도')
+        if use_original_vib:
+            data_source_info.append('원본 진동')
+        else:
+            data_source_info.append('증강 진동')
+        
         return jsonify({
             'status': 'started',
-            'message': '모델 학습이 시작되었습니다. 완료까지 몇 분이 소요될 수 있습니다.',
+            'message': f'모델 학습이 시작되었습니다 ({model_type.upper()} 모델, {", ".join(data_source_info)}). 완료까지 몇 분이 소요될 수 있습니다.',
+            'model_type': model_type,
+            'use_original_temp': use_original_temp,
+            'use_original_vib': use_original_vib,
             'progress_file': os.path.join(ai_ml_path, 'data', 'train_progress.json')
         })
         

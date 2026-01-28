@@ -2,7 +2,7 @@
   width: 100%;
   height: 100%;
   min-height: 500px;
-  background: #0a0a0b;
+  background: #0a0a0b; /* 대시보드 배경색과 동일 */
   position: relative;
   border-radius: 2px;
   overflow: hidden;
@@ -115,7 +115,7 @@
 /* 줌 컨트롤 버튼 */
 .model-viewer-zoom-controls {
   position: absolute;
-  bottom: 20px;
+  bottom: 30px;
   right: 20px;
   z-index: 10;
   display: flex;
@@ -124,9 +124,9 @@
 }
 
 .zoom-btn {
-  width: 40px;
-  height: 40px;
-  background: rgba(30, 30, 35, 0.9);
+  width: 36px;
+  height: 36px;
+  background: rgba(30, 30, 35, 0.7);
   color: #e5e7eb;
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
@@ -144,7 +144,7 @@
 }
 
 .zoom-btn:hover {
-  background: rgba(40, 40, 45, 0.95);
+  background: rgba(40, 40, 45, 0.8);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -160,4 +160,49 @@
 .zoom-out-btn {
   border-radius: 0 0 8px 8px;
   border-top: none;
+}
+
+/* Hotspot 정보 레이블 */
+.hotspot-info-label {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 200px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hotspot-info-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 0 8px 0;
+  padding: 0;
+  color: #4CAF50;
+  text-align: left;
+}
+
+.hotspot-info-text {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.9;
+  margin: 0;
+  padding: 0;
+  text-align: left;
 }

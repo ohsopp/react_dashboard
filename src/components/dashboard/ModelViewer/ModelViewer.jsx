@@ -1,4 +1,4 @@
-import { useRef, Suspense, useState, useEffect } from 'react'
+import { useRef, Suspense, useState, useEffect, useMemo, useCallback } from 'react'
 import { Canvas, useFrame, useThree, useLoader } from '@react-three/fiber'
 import { OrbitControls, Environment, Html, useProgress } from '@react-three/drei'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
@@ -6,6 +6,7 @@ import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import * as THREE from 'three'
+import { Hotspot } from './Hotspot'
 import './ModelViewer.css'
 
 // 드라코 로더 전역 설정
@@ -39,7 +40,7 @@ function Loader() {
 }
 
 // OBJ 모델 로더 컴포넌트 (MTL 머티리얼 지원)
-function ObjModel({ url, mtlUrl = null, isRotating = true }) {
+function ObjModel({ url, mtlUrl = null, isRotating = true, hotspots = [], onHotspotClick }) {
   const materials = mtlUrl ? useLoader(MTLLoader, mtlUrl) : null
   
   const obj = useLoader(
@@ -52,6 +53,7 @@ function ObjModel({ url, mtlUrl = null, isRotating = true }) {
   )
   
   const meshRef = useRef()
+  const groupRef = useRef()
 
   useFrame((state, delta) => {
     if (meshRef.current && isRotating) {
@@ -64,19 +66,38 @@ function ObjModel({ url, mtlUrl = null, isRotating = true }) {
   const size = box.getSize(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z)
   const scale = 2 / maxDim
+  
+  const modelPosition = [-center.x * scale, -center.y * scale, -center.z * scale]
 
   return (
-    <primitive
-      ref={meshRef}
-      object={obj}
-      position={[-center.x * scale, -center.y * scale, -center.z * scale]}
-      scale={scale}
-    />
+    <group ref={groupRef}>
+      <primitive
+        ref={meshRef}
+        object={obj}
+        position={modelPosition}
+        scale={scale}
+      />
+      {/* Hotspots - 모델과 함께 회전 */}
+      {hotspots.map((hotspot) => (
+        <Hotspot
+          key={hotspot.number}
+          position={[
+            modelPosition[0] + hotspot.position[0] * scale,
+            modelPosition[1] + hotspot.position[1] * scale,
+            modelPosition[2] + hotspot.position[2] * scale
+          ]}
+          number={hotspot.number}
+          info={hotspot.info}
+          onClick={onHotspotClick}
+          isActive={hotspot.isActive}
+        />
+      ))}
+    </group>
   )
 }
 
 // GLTF 모델 로더 컴포넌트 (드라코 압축 지원)
-function GltfModel({ url, useDraco = false, isRotating = true }) {
+function GltfModel({ url, useDraco = false, isRotating = true, hotspots = [], onHotspotClick }) {
   const isDracoEnabled = useDraco || url.includes('.draco.')
   
   // GLTFLoader에 드라코 로더 설정
@@ -92,6 +113,7 @@ function GltfModel({ url, useDraco = false, isRotating = true }) {
   )
   
   const meshRef = useRef()
+  const groupRef = useRef()
   
   useEffect(() => {
     if (gltf && gltf.scene) {
@@ -129,14 +151,33 @@ function GltfModel({ url, useDraco = false, isRotating = true }) {
   const size = box.getSize(new THREE.Vector3())
   const maxDim = Math.max(size.x, size.y, size.z)
   const scale = 2 / maxDim
+  
+  const modelPosition = [-center.x * scale, -center.y * scale, -center.z * scale]
 
   return (
-    <primitive
-      ref={meshRef}
-      object={gltf.scene}
-      position={[-center.x * scale, -center.y * scale, -center.z * scale]}
-      scale={scale}
-    />
+    <group ref={groupRef}>
+      <primitive
+        ref={meshRef}
+        object={gltf.scene}
+        position={modelPosition}
+        scale={scale}
+      />
+      {/* Hotspots - 모델과 함께 회전 */}
+      {hotspots.map((hotspot) => (
+        <Hotspot
+          key={hotspot.number}
+          position={[
+            modelPosition[0] + hotspot.position[0] * scale,
+            modelPosition[1] + hotspot.position[1] * scale,
+            modelPosition[2] + hotspot.position[2] * scale
+          ]}
+          number={hotspot.number}
+          info={hotspot.info}
+          onClick={onHotspotClick}
+          isActive={hotspot.isActive}
+        />
+      ))}
+    </group>
   )
 }
 
@@ -153,8 +194,35 @@ function CameraRef({ controlsRef, cameraRef }) {
   return null
 }
 
-// OrbitControls 컴포넌트
+// OrbitControls 컴포넌트 (Hotspot 클릭 방해 방지)
 function CameraControls({ enableZoom = true, controlsRef }) {
+  const { gl } = useThree()
+  
+  useEffect(() => {
+    if (!controlsRef?.current) return
+    
+    const controls = controlsRef.current
+    const domElement = gl.domElement
+    
+    // Hotspot 클릭 시 OrbitControls 일시 비활성화 - 최적화된 핸들러
+    const handlePointerDown = (e) => {
+      // 빠른 조기 종료
+      if (e.target?.dataset?.hotspot !== 'true') return
+      
+      controls.enabled = false
+      // requestAnimationFrame으로 최적화
+      requestAnimationFrame(() => {
+        controls.enabled = true
+      })
+    }
+    
+    domElement.addEventListener('pointerdown', handlePointerDown, { capture: true, passive: false })
+    
+    return () => {
+      domElement.removeEventListener('pointerdown', handlePointerDown, { capture: true })
+    }
+  }, [gl, controlsRef])
+  
   return (
     <OrbitControls 
       ref={controlsRef} 
@@ -175,14 +243,35 @@ export default function ModelViewer({
   useGltf = true, 
   useDraco = true,
   instanceKey = 'default', // 모달과 패널을 구분하기 위한 key
-  enableZoom = true // 모달에서는 true, 패널에서는 false
+  enableZoom = true, // 모달에서는 true, 패널에서는 false
+  hotspots = [] // Hotspot 데이터 배열
 }) {
-  const [isRotating, setIsRotating] = useState(true)
+  const [isRotating, setIsRotating] = useState(false)
+  const [activeHotspot, setActiveHotspot] = useState(null)
   const containerRef = useRef(null)
   const controlsRef = useRef(null)
   const cameraRef = useRef(null)
   
-  const handleZoomIn = () => {
+  // Hotspot 클릭 핸들러 (토글 기능) - useCallback으로 메모이제이션
+  const handleHotspotClick = useCallback((number) => {
+    setActiveHotspot(prev => {
+      if (prev?.number === number) {
+        return null
+      }
+      return hotspots.find(h => h.number === number) || null
+    })
+  }, [hotspots])
+  
+  // 활성화된 hotspot 업데이트 - useMemo로 메모이제이션
+  const hotspotsWithActive = useMemo(() => {
+    return hotspots.map(h => ({
+      ...h,
+      isActive: activeHotspot?.number === h.number
+    }))
+  }, [hotspots, activeHotspot])
+  
+  // 줌 인/아웃 핸들러 - useCallback으로 메모이제이션
+  const handleZoomIn = useCallback(() => {
     if (controlsRef.current && cameraRef.current) {
       const controls = controlsRef.current
       const camera = cameraRef.current
@@ -198,9 +287,9 @@ export default function ModelViewer({
       camera.position.copy(target).add(direction.multiplyScalar(newDistance))
       controls.update()
     }
-  }
+  }, [])
   
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (controlsRef.current && cameraRef.current) {
       const controls = controlsRef.current
       const camera = cameraRef.current
@@ -216,7 +305,7 @@ export default function ModelViewer({
       camera.position.copy(target).add(direction.multiplyScalar(newDistance))
       controls.update()
     }
-  }
+  }, [])
   
   useEffect(() => {
     const container = containerRef.current
@@ -257,9 +346,16 @@ export default function ModelViewer({
           preserveDrawingBuffer: false,
           antialias: true,
           alpha: false,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
+          stencil: false,
+          depth: true
         }}
-        onCreated={({ gl }) => {
+        dpr={[1, 2]} // 디바이스 픽셀 비율 제한 (성능 향상)
+        performance={{ min: 0.5 }} // 성능 모니터링
+        onCreated={({ gl, scene }) => {
+          // Scene 배경색 설정 (대시보드 배경색과 동일)
+          scene.background = new THREE.Color(0x0a0a0b)
+          
           // Canvas DOM 요소에 직접 스타일 및 이벤트 설정
           const canvas = gl.domElement
           canvas.style.touchAction = 'none'
@@ -275,12 +371,14 @@ export default function ModelViewer({
           const handleContextRestored = () => {
             // 컨텍스트 복원 후 렌더러 재초기화
             gl.forceContextRestore()
+            // 배경색 재설정
+            scene.background = new THREE.Color(0x0a0a0b)
           }
           
           canvas.addEventListener('webglcontextlost', handleContextLost, false)
           canvas.addEventListener('webglcontextrestored', handleContextRestored, false)
           
-          // 드래그 중 커서 변경
+          // 드래그 중 커서 변경 - 이벤트 최적화
           const handleMouseDown = () => {
             canvas.style.cursor = 'grabbing'
           }
@@ -291,9 +389,10 @@ export default function ModelViewer({
             canvas.style.cursor = 'grab'
           }
           
-          canvas.addEventListener('mousedown', handleMouseDown)
-          canvas.addEventListener('mouseup', handleMouseUp)
-          canvas.addEventListener('mouseleave', handleMouseLeave)
+          // passive 옵션으로 성능 향상
+          canvas.addEventListener('mousedown', handleMouseDown, { passive: true })
+          canvas.addEventListener('mouseup', handleMouseUp, { passive: true })
+          canvas.addEventListener('mouseleave', handleMouseLeave, { passive: true })
           
           return () => {
             canvas.removeEventListener('webglcontextlost', handleContextLost, false)
@@ -312,9 +411,21 @@ export default function ModelViewer({
         
         <Suspense fallback={<Loader />}>
           {useGltf ? (
-            <GltfModel url={modelPath} useDraco={useDraco} isRotating={isRotating} />
+            <GltfModel 
+              url={modelPath} 
+              useDraco={useDraco} 
+              isRotating={isRotating}
+              hotspots={hotspotsWithActive}
+              onHotspotClick={handleHotspotClick}
+            />
           ) : (
-            <ObjModel url={modelPath} mtlUrl={mtlPath} isRotating={isRotating} />
+            <ObjModel 
+              url={modelPath} 
+              mtlUrl={mtlPath} 
+              isRotating={isRotating}
+              hotspots={hotspotsWithActive}
+              onHotspotClick={handleHotspotClick}
+            />
           )}
         </Suspense>
         
@@ -343,6 +454,18 @@ export default function ModelViewer({
           −
         </button>
       </div>
+      
+      {/* Hotspot 정보 레이블 */}
+      {activeHotspot && (
+        <div className="hotspot-info-label">
+          <div className="hotspot-info-title">
+            위치 #{activeHotspot.number}
+          </div>
+          <div className="hotspot-info-text">
+            {activeHotspot.info || `위치 ${activeHotspot.number}에 대한 정보입니다.`}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

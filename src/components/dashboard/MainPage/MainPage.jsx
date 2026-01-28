@@ -46,8 +46,36 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
     },
     {
       id: 'main-panel7',
-      title: '3D Model Viewer',
-      content: <ModelViewer modelPath="/models/Power_Press_Machine_texture.draco.glb" useGltf={true} useDraco={true} instanceKey="panel" enableZoom={false} />
+      title: '3D Press Viewer',
+      content: <ModelViewer 
+        modelPath="/models/Power_Press_Machine_texture.draco.glb" 
+        useGltf={true} 
+        useDraco={true} 
+        instanceKey="panel" 
+        enableZoom={false}
+        hotspots={[
+          {
+            number: 1,
+            position: [0, -0.5, 0],
+            info: '이 부분은 프레스 머신의 접촉부입니다. 금형(펀치와 다이)이 맞물리는 위치입니다.'
+          },
+          {
+            number: 2,
+            position: [0.0, 0.95, 0.0],
+            info: '이 부분은 프레스 머신의 상단부입니다. 주요 작동 메커니즘이 위치합니다.'
+          },
+          {
+            number: 3,
+            position: [-0.95, 0.0, 0.0],
+            info: '측면 부품입니다. 모터와 전원 연결부가 위치합니다.'
+          },
+          {
+            number: 4,
+            position: [0.95, 0.0, 0.0],
+            info: '반대편 측면 부품입니다. 냉각 시스템과 배기 장치가 있습니다.'
+          }
+        ]}
+      />
     }
   ], [])
 

@@ -157,3 +157,22 @@
   opacity: 1;
 }
 
+/* 3D Model Viewer 패널 스타일 - 대시보드 배경색과 동일, 테두리 없음 */
+.panel[id="main-panel7"] {
+  background: #0a0a0b;
+  border: none;
+}
+
+.panel[id="main-panel7"]:hover {
+  border: none;
+}
+
+.panel[id="main-panel7"] .panel-content {
+  background: #0a0a0b;
+  padding: 0;
+}
+
+.panel[id="main-panel7"] .panel-header {
+  background: #000000;
+}
+

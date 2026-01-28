@@ -210,3 +210,8 @@
     opacity: 0.6;
   }
 }
+
+/* 3D Model Viewer 패널 헤더 - 대시보드 배경색과 동일 */
+.panel[id="main-panel7"] .panel-header {
+  background: #0a0a0b;
+}

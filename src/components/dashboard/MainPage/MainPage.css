@@ -33,4 +33,10 @@
   grid-row: span 3;
   min-height: 500px;
 }
+
+/* 3D Model Viewer 패널: 세로 3칸 차지 */
+#main-panel7 {
+  grid-row: span 3;
+  min-height: 500px;
+}
 ㄴ

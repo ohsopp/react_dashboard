@@ -216,11 +216,12 @@ function App() {
   // Main 패널 사이즈 관리
   const [mainPanelSizes, setMainPanelSizes] = useState({
     'main-panel1': 3, // Motor Forward: 1/4
-    'main-panel2': 12, // Die Protection: 전체
+    'main-panel2': 6, // Die Protection: 2/4
     'main-panel3': 3, // Counter: 1/4
     'main-panel4': 3, // Machine #1: 1/4
     'main-panel5': 3, // Machine #2: 1/4
-    'main-panel6': 3  // Machine #3: 1/4
+    'main-panel6': 3, // Machine #3: 1/4
+    'main-panel7': 6  // 3D Model Viewer: 2/4
   })
   
   // Main 패널 순서 관리
@@ -240,13 +241,17 @@ function App() {
         if (!updated.includes(5)) {
           updated = [...updated, 5]
         }
+        // 3D Model Viewer (인덱스 6)가 없으면 추가
+        if (!updated.includes(6)) {
+          updated = [...updated, 6]
+        }
         return updated
       }
     } catch (e) {
       console.error('메인 패널 순서 로드 실패:', e)
     }
-    // 기본 순서: [Machine #1, Machine #2, Machine #3, Motor Forward, Counter, Die Protection]
-    return [3, 4, 5, 0, 2, 1]
+    // 기본 순서: [Machine #1, 3D Model Viewer, Motor Forward, Counter, Machine #2, Die Protection, Machine #3]
+    return [3, 6, 0, 2, 4, 1, 5]
   })
   const statPanelSizesRef = useRef({
     'stat-panel6': 3,

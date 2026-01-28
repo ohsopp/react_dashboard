@@ -44,7 +44,13 @@ const PanelModal = ({ isOpen, onClose, title, subtitle, children, temperature })
     <div className="panel-modal-overlay" onMouseDown={onClose}>
       <div 
         className="panel-modal" 
-        onMouseDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => {
+          // Canvas 요소인 경우 이벤트 전파 허용 (3D 뷰어 제어를 위해)
+          if (e.target.tagName === 'CANVAS' || e.target.closest('canvas')) {
+            return // Canvas 이벤트는 전파 허용
+          }
+          e.stopPropagation()
+        }}
       >
         {title && (
           <div className="panel-modal-header-wrapper">
@@ -56,7 +62,16 @@ const PanelModal = ({ isOpen, onClose, title, subtitle, children, temperature })
             <button className="panel-modal-close" onClick={onClose}>×</button>
           </div>
         )}
-        <div className="panel-modal-content" ref={contentRef}>
+        <div 
+          className="panel-modal-content" 
+          ref={contentRef}
+          onMouseDown={(e) => {
+            // Canvas 요소인 경우 이벤트 전파 허용 (3D 뷰어 제어를 위해)
+            if (e.target.tagName === 'CANVAS' || e.target.closest('canvas')) {
+              e.stopPropagation()
+            }
+          }}
+        >
           {/* DOM이 준비된 후에만 children 렌더링 (Chart 오류 방지) */}
           {isReady ? children : <div style={{ padding: '20px', textAlign: 'center', color: '#7d8590' }}>로딩 중...</div>}
         </div>

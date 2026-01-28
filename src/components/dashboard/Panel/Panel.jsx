@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import React from 'react'
 import './Panel.css'
 import PanelModal from '../PanelModal/PanelModal'
 import PanelHeader from '../PanelHeader/PanelHeader'
@@ -36,6 +37,11 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
   const handlePanelMouseEnter = () => {
     // 카드 패널(통계 패널)은 hover해도 확장 버튼 표시 안 함
     if (id && id.startsWith('stat-panel')) {
+      return
+    }
+    
+    // 3D Model Viewer 패널은 확장 버튼 표시 안 함
+    if (id === 'main-panel7') {
       return
     }
     
@@ -242,15 +248,17 @@ const Panel = ({ title, subtitle, children, className = '', size = 1, onSizeChan
         />
       </div>
       
-      <PanelModal 
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={title}
-        subtitle={subtitle}
-        temperature={temperature}
-      >
-        {children}
-      </PanelModal>
+      {id !== 'main-panel7' && (
+        <PanelModal 
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          title={title}
+          subtitle={subtitle}
+          temperature={temperature}
+        >
+          {children}
+        </PanelModal>
+      )}
       
       <CsvDownloadModal
         isOpen={isCsvModalOpen}

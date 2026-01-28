@@ -1,5 +1,4 @@
 import './TopBar.css'
-import Breadcrumb from '../Breadcrumb/Breadcrumb'
 import uitLogo from '../../../assets/icons/uit_logo.png'
 
 const INFLUXDB_URL = 'http://localhost:8090'
@@ -45,7 +44,6 @@ const TopBar = ({ breadcrumbItems, timeRange, onRefresh }) => {
         <div className="topbar-logo">
           <img src={uitLogo} alt="UIT Logo" style={{ height: '20px', width: 'auto' }} />
         </div>
-        {breadcrumbItems && <Breadcrumb items={breadcrumbItems} />}
       </div>
       <div className="topbar-right">
         {timeRange && (

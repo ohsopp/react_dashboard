@@ -5,6 +5,7 @@ import MotorForward from '../MotorForward/MotorForward'
 import Counter from '../Counter/Counter'
 import DieProtection from '../DieProtection/DieProtection'
 import MachineStatus from '../MachineStatus/MachineStatus'
+import ModelViewer from '../ModelViewer/ModelViewer'
 import './MainPage.css'
 
 const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalClose, onHide, hiddenPanels, panelOrder, onPanelOrderChange, selectedRange, onSelectRange, onEdit, onChartClick, machineData, setMachineData, machineData2, setMachineData2, machineData3, setMachineData3 }) => {
@@ -42,6 +43,11 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
       id: 'main-panel6',
       title: 'Machine #3',
       content: <MachineStatus />
+    },
+    {
+      id: 'main-panel7',
+      title: '3D Model Viewer',
+      content: <ModelViewer modelPath="/models/Power_Press_Machine_texture.draco.glb" useGltf={true} useDraco={true} instanceKey="panel" enableZoom={false} />
     }
   ], [])
 
@@ -63,14 +69,40 @@ const MainPage = ({ panelSizes, onSizeChange, isDragging, onModalOpen, onModalCl
           ghostClass: 'sortable-ghost',
           chosenClass: 'sortable-chosen',
           dragClass: 'sortable-drag',
-          filter: '.panel-resize-handle, button, .panel-modal-close',
+          filter: '.panel-resize-handle, button, .panel-modal-close, canvas',
           preventOnFilter: false,
           disabled: false,
           
           onStart: (evt) => {
             if (document.querySelector('.panel-modal-overlay')) {
-              evt.cancel()
+              // 모달이 열려있으면 드래그 방지
+              if (sortableInstance.current) {
+                sortableInstance.current.option('disabled', true)
+                setTimeout(() => {
+                  if (sortableInstance.current) {
+                    sortableInstance.current.option('disabled', false)
+                  }
+                }, 100)
+              }
               return
+            }
+            // 3D Model Viewer의 Canvas 영역에서 드래그 시작 시 SortableJS 드래그 취소
+            // 패널 헤더나 다른 부분에서는 드래그 가능
+            const isCanvas = evt.target.tagName === 'CANVAS' || evt.target.closest('canvas')
+            const isModelViewerContainer = evt.target.closest('.model-viewer-container')
+            
+            if (isCanvas || isModelViewerContainer) {
+              // Canvas 영역에서는 SortableJS 드래그 취소 (3D 뷰어 드래그는 OrbitControls가 처리)
+              if (sortableInstance.current) {
+                sortableInstance.current.option('disabled', true)
+                // 드래그 종료 후 다시 활성화
+                setTimeout(() => {
+                  if (sortableInstance.current) {
+                    sortableInstance.current.option('disabled', false)
+                  }
+                }, 100)
+              }
+              return // 드래그 시작하지 않음
             }
             setIsMainDragging(true)
             evt.item.classList.add('dragging', 'sortable-selected')

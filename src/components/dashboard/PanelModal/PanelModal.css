@@ -132,6 +132,24 @@
   flex-direction: column;
 }
 
+/* 3D Model Viewer 모달에서 패딩 제거 및 전체 높이 사용 */
+.panel-modal-content:has(.model-viewer-container) {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Canvas 요소가 이벤트를 직접 받을 수 있도록 설정 */
+.panel-modal-content canvas {
+  pointer-events: auto !important;
+  touch-action: none !important;
+  user-select: none !important;
+  cursor: grab !important;
+}
+
+.panel-modal-content canvas:active {
+  cursor: grabbing !important;
+}
+
 .panel-modal-content::-webkit-scrollbar {
   width: 8px;
 }

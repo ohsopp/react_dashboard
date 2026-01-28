@@ -55,7 +55,7 @@ function ObjModel({ url, mtlUrl = null, isRotating = true }) {
 
   useFrame((state, delta) => {
     if (meshRef.current && isRotating) {
-      meshRef.current.rotation.y += delta * 0.2
+      meshRef.current.rotation.y += delta * 0.03
     }
   })
 
@@ -120,7 +120,7 @@ function GltfModel({ url, useDraco = false, isRotating = true }) {
 
   useFrame((state, delta) => {
     if (meshRef.current && isRotating) {
-      meshRef.current.rotation.y += delta * 0.2
+      meshRef.current.rotation.y += delta * 0.05
     }
   })
 
